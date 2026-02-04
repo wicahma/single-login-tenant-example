@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, Button, LoadingSpinner } from "@/components/atoms";
 import { UserProfile } from "@/components/molecules";
 import { Header } from "@/components/organisms";
+import { validateToken, updateUserProfile } from "@/lib/client-api";
+import { storageKeys } from "@/config";
 
 export default function DashboardPage() {
   const { isAuthenticated, user, logout, fetchUserDetails, refreshToken } =
@@ -14,6 +16,23 @@ export default function DashboardPage() {
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [isRefreshingToken, setIsRefreshingToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [isValidatingAccess, setIsValidatingAccess] = useState(false);
+  const [isValidatingRefresh, setIsValidatingRefresh] = useState(false);
+  const [accessTokenValidation, setAccessTokenValidation] = useState<
+    string | null
+  >(null);
+  const [refreshTokenValidation, setRefreshTokenValidation] = useState<
+    string | null
+  >(null);
+
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    fullName: "",
+    phoneNumber: "",
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -21,19 +40,29 @@ export default function DashboardPage() {
       return;
     }
 
-    if (!user) {
-      // If authenticated but no user data, fetch it
+    if (user) {
+      setProfileForm({
+        fullName: user.name || "",
+        phoneNumber: user.phoneNumber || "",
+      });
+    } else {
       loadUserDetails();
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, user]);
 
   const loadUserDetails = async () => {
     setIsLoadingUser(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const userData = await fetchUserDetails();
-      if (!userData) {
+      if (userData) {
+        setProfileForm({
+          fullName: userData.name || "",
+          phoneNumber: userData.phoneNumber || "",
+        });
+      } else {
         setError("Failed to load user data");
       }
     } catch (err) {
@@ -50,7 +79,6 @@ export default function DashboardPage() {
       router.push("/");
     } catch (err) {
       console.error("[Dashboard] Logout failed:", err);
-      // Still redirect even if API call fails
       router.push("/");
     }
   };
@@ -58,11 +86,12 @@ export default function DashboardPage() {
   const handleRefreshToken = async () => {
     setIsRefreshingToken(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const success = await refreshToken();
       if (success) {
-        // Reload user data after token refresh
+        setSuccessMessage("Token refreshed successfully!");
         await loadUserDetails();
       } else {
         setError("Failed to refresh token");
@@ -77,6 +106,130 @@ export default function DashboardPage() {
 
   const handleRefreshUserData = async () => {
     await loadUserDetails();
+  };
+
+  const handleValidateAccessToken = async () => {
+    setIsValidatingAccess(true);
+    setAccessTokenValidation(null);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const accessToken = localStorage.getItem(storageKeys.accessToken);
+      if (!accessToken) {
+        setAccessTokenValidation("❌ No access token found");
+        return;
+      }
+
+      const result = await validateToken(accessToken, "access");
+
+      console.log("Access token validation result:", result);
+      if (result.status && result.data) {
+        if (result.data.isValid) {
+          setAccessTokenValidation(
+            `✅ Access token is valid${result.data.message ? ` - ${result.data.message}` : ""}`,
+          );
+          setSuccessMessage("Access token is valid!");
+        } else {
+          setAccessTokenValidation(
+            `❌ Access token is invalid${result.data.message ? ` - ${result.data.message}` : ""}`,
+          );
+          setError("Access token is invalid");
+        }
+        return;
+      }
+
+      setAccessTokenValidation(
+        "❌ Validation failed: " + (result.error || "Unknown error"),
+      );
+      setError(result.error || "Validation failed");
+    } catch (err) {
+      console.error("[Dashboard] Access token validation failed:", err);
+      setAccessTokenValidation(
+        "❌ Validation error: " + (err as Error).message,
+      );
+      setError("Validation failed: " + (err as Error).message);
+    } finally {
+      setIsValidatingAccess(false);
+    }
+  };
+
+  const handleValidateRefreshToken = async () => {
+    setIsValidatingRefresh(true);
+    setRefreshTokenValidation(null);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const refreshTokenValue = localStorage.getItem(storageKeys.refreshToken);
+      if (!refreshTokenValue) {
+        setRefreshTokenValidation("❌ No refresh token found");
+        return;
+      }
+
+      const result = await validateToken(refreshTokenValue, "refresh");
+
+      if (result.status && result.data) {
+        if (result.data.isValid) {
+          setRefreshTokenValidation(
+            `✅ Refresh token is valid${result.data.message ? ` - ${result.data.message}` : ""}`,
+          );
+          setSuccessMessage("Refresh token is valid!");
+        } else {
+          setRefreshTokenValidation(
+            `❌ Refresh token is invalid${result.data.message ? ` - ${result.data.message}` : ""}`,
+          );
+          setError("Refresh token is invalid");
+        }
+      } else {
+        setRefreshTokenValidation(
+          "❌ Validation failed: " + (result.error || "Unknown error"),
+        );
+        setError(result.error || "Validation failed");
+      }
+    } catch (err) {
+      console.error("[Dashboard] Refresh token validation failed:", err);
+      setRefreshTokenValidation(
+        "❌ Validation error: " + (err as Error).message,
+      );
+      setError("Validation failed: " + (err as Error).message);
+    } finally {
+      setIsValidatingRefresh(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingProfile(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const accessToken = localStorage.getItem(storageKeys.accessToken);
+      if (!accessToken) {
+        setError("No access token found");
+        return;
+      }
+
+      const result = await updateUserProfile(accessToken, {
+        fullName: profileForm.fullName,
+        phoneNumber: profileForm.phoneNumber,
+      });
+
+      if (result.status && result.data) {
+        setSuccessMessage("Profile updated successfully!");
+        setShowUpdateForm(false);
+        // Reload user data to show updated info
+        await loadUserDetails();
+      } else {
+        setError(result.error || "Failed to update profile");
+      }
+    } catch (err) {
+      console.error("[Dashboard] Profile update failed:", err);
+      setError("Failed to update profile: " + (err as Error).message);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -132,6 +285,12 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+              {successMessage}
+            </div>
+          )}
+
           <div className="grid gap-6">
             {isLoadingUser && (
               <Card>
@@ -181,6 +340,126 @@ export default function DashboardPage() {
                   Your session is active and secure.
                 </p>
               </div>
+            </Card>
+
+            <Card>
+              <h2 className="text-xl font-bold mb-4">Token Validation</h2>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex gap-3 mb-2">
+                    <Button
+                      onClick={handleValidateAccessToken}
+                      disabled={isValidatingAccess}
+                      variant="secondary"
+                    >
+                      {isValidatingAccess
+                        ? "Validating..."
+                        : "Validate Access Token"}
+                    </Button>
+                    <Button
+                      onClick={handleValidateRefreshToken}
+                      disabled={isValidatingRefresh}
+                      variant="secondary"
+                    >
+                      {isValidatingRefresh
+                        ? "Validating..."
+                        : "Validate Refresh Token"}
+                    </Button>
+                  </div>
+
+                  {accessTokenValidation && (
+                    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+                      <strong>Access Token:</strong> {accessTokenValidation}
+                    </div>
+                  )}
+
+                  {refreshTokenValidation && (
+                    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+                      <strong>Refresh Token:</strong> {refreshTokenValidation}
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500">
+                  Check if your current tokens are still valid on the server.
+                </p>
+              </div>
+            </Card>
+
+            <Card>
+              <h2 className="text-xl font-bold mb-4">Update Profile</h2>
+
+              {!showUpdateForm ? (
+                <div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Update your profile information (Full Name and Phone
+                    Number).
+                  </p>
+                  <Button onClick={() => setShowUpdateForm(true)}>
+                    Edit Profile
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={profileForm.fullName}
+                      onChange={(e) =>
+                        setProfileForm({
+                          ...profileForm,
+                          fullName: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={profileForm.phoneNumber}
+                      onChange={(e) =>
+                        setProfileForm({
+                          ...profileForm,
+                          phoneNumber: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button type="submit" disabled={isUpdatingProfile}>
+                      {isUpdatingProfile ? "Updating..." : "Save Changes"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowUpdateForm(false);
+                        // Reset form to current user data
+                        if (user) {
+                          setProfileForm({
+                            fullName: user.name || "",
+                            phoneNumber: user.phoneNumber || "",
+                          });
+                        }
+                      }}
+                      disabled={isUpdatingProfile}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
             </Card>
           </div>
         </div>

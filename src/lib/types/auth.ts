@@ -117,3 +117,14 @@ export interface AuthSession {
 export type EUsernameSource = "Npk" | "Aol";
 export type EPasswordSource = "Cms";
 export type TResponseType = "default" | "pre-token";
+
+export interface TokenValidationResponse {
+  isValid: boolean;
+  tokenType: string;
+  message?: string | null;
+}
+
+export interface UpdateProfileRequest {
+  fullName: string;
+  phoneNumber: string;
+}

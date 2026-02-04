@@ -3,10 +3,11 @@
 import {
   EPasswordSource,
   EUsernameSource,
-  PreTokenLoginResponse,
   TokenResponse,
   TResponseType,
   UserInfo,
+  TokenValidationResponse,
+  UpdateProfileRequest,
 } from "@/lib/types/auth";
 
 export interface ApiResponse<T = any> {
@@ -329,6 +330,81 @@ export async function revokeOAuthToken(
     };
   } catch (error) {
     console.error("[ClientAPI] Token revocation failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function validateToken(
+  token: string,
+  tokenType: "access" | "refresh",
+): Promise<ApiResponse<TokenValidationResponse>> {
+  try {
+    const response = await fetch("/api/auth/validate-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        tokenType,
+      }),
+    });
+
+    const data = await response.json();
+
+    console.log("Token validation response data in client:", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || "Token validation failed");
+    }
+
+    return {
+      status: true,
+      data: {
+        isValid: data.data.isValid,
+        tokenType: data.data.tokenType,
+        message: data.message,
+      },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Token validation failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function updateUserProfile(
+  accessToken: string,
+  profileData: UpdateProfileRequest,
+): Promise<ApiResponse<UserInfo>> {
+  try {
+    const response = await fetch("/api/auth/update-profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(profileData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Profile update failed");
+    }
+
+    return {
+      status: true,
+      data: data,
+      message: "Profile updated successfully",
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Profile update failed:", error);
     return {
       status: false,
       error: (error as Error).message,
