@@ -11,7 +11,7 @@ import {
   useRef,
 } from "react";
 import { storageKeys, LoginMethod } from "@/config";
-import { TokenResponse, UserInfo } from "@/types/auth";
+import { TokenResponse, UserInfo } from "@/lib/types/auth";
 import {
   logoutUser,
   refreshAccessToken as refreshTokenApi,
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod | null>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
- 
+
   const setupAutoRefresh = useCallback((expiresIn: number) => {
     // Clear existing timer
     if (refreshTimerRef.current) {
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       }
     }, refreshTime);
   }, []);
- 
+
   const isTokenExpiringSoon = useCallback((): boolean => {
     const expiry = localStorage.getItem(storageKeys.tokenExpiry);
     if (!expiry) return true;
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
     return expiryTime - now < fiveMinutes;
   }, []);
- 
+
   useEffect(() => {
     const token = localStorage.getItem(storageKeys.accessToken);
     const userData = localStorage.getItem(storageKeys.userData);
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       }
     };
   }, [setupAutoRefresh]);
- 
+
   const login = useCallback(
     (tokens: TokenResponse, userData: UserInfo, method: LoginMethod) => {
       localStorage.setItem(storageKeys.accessToken, tokens.accessToken);
@@ -142,7 +142,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     },
     [setupAutoRefresh],
   );
- 
+
   const logout = useCallback(async () => {
     // Clear refresh timer
     if (refreshTimerRef.current) {
@@ -187,7 +187,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
     console.log("[AuthContext] Session cleared");
   }, [accessToken]);
- 
+
   const updateTokens = useCallback(
     (tokens: TokenResponse) => {
       localStorage.setItem(storageKeys.accessToken, tokens.accessToken);
@@ -203,7 +203,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     },
     [setupAutoRefresh],
   );
- 
+
   const refreshToken = useCallback(async (): Promise<boolean> => {
     const storedRefreshToken = localStorage.getItem(storageKeys.refreshToken);
 
@@ -231,7 +231,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       return false;
     }
   }, [updateTokens]);
- 
+
   const fetchUserDetails = useCallback(async (): Promise<UserInfo | null> => {
     if (!accessToken) {
       console.error("[AuthContext] No access token available");

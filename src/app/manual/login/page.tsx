@@ -8,6 +8,11 @@ import { loginUser } from "@/lib/client-api";
 import { loginMethods } from "@/config";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  EPasswordSource,
+  EUsernameSource,
+  TResponseType,
+} from "@/lib/types/auth";
 
 export default function ManualLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +30,19 @@ export default function ManualLoginPage() {
     setError(null);
 
     try {
-      const response = await loginUser(username, password);
+      const usernameSource: EUsernameSource = "Npk";
+      const passwordSource: EPasswordSource | null = null;
+      const responseType: TResponseType = "pre-token";
+
+      const response = await loginUser(
+        username,
+        password,
+        usernameSource,
+        passwordSource,
+        responseType,
+      );
+
+      console.log("Login response:", response);
 
       if (!response.status || !response.data) {
         throw new Error(response.error || "Login failed");

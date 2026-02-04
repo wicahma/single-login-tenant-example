@@ -22,6 +22,12 @@ export interface TokenResponse {
   tokenType: string;
 }
 
+export interface PreTokenLoginResponse {
+  preToken: string;
+  expiresIn: number;
+  message: string;
+}
+
 export interface UserInfo {
   sub: string;
   name: string;
@@ -107,3 +113,7 @@ export interface AuthSession {
   state: string;
   nonce: string;
 }
+
+export type EUsernameSource = "Npk" | "Aol";
+export type EPasswordSource = "Cms";
+export type TResponseType = "default" | "pre-token";

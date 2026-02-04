@@ -2,7 +2,7 @@
 
 import { FC, ReactNode } from "react";
 import { Card } from "../atoms";
-import { UserInfo } from "@/types/auth";
+import { UserInfo } from "@/lib/types/auth";
 
 interface UserProfileProps {
   user: UserInfo;

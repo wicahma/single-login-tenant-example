@@ -10,7 +10,7 @@ import { ssoConfig, storageKeys } from "@/config";
 import { Card, Button } from "@/components/atoms";
 import { Header } from "@/components/organisms";
 import { useAuth } from "@/contexts/AuthContext";
-import { AuthSession } from "@/types/auth";
+import { AuthSession } from "@/lib/types/auth";
 
 export default function OAuthLoginPage() {
   const [isLoading, setIsLoading] = useState(false);

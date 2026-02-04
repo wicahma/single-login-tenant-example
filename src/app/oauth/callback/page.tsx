@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ssoConfig, storageKeys, loginMethods } from "@/config";
 import { Card, LoadingSpinner } from "@/components/atoms";
-import { AuthSession, TokenResponse, UserInfo } from "@/types/auth";
+import { AuthSession, TokenResponse, UserInfo } from "@/lib/types/auth";
 import { ApiResponse } from "@/lib/client-api";
 
 export default function OAuthCallbackPage() {

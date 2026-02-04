@@ -5,7 +5,7 @@ import { signManualRequest } from "@/lib/crypto";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const url = `${manualAuthConfig.ssoBaseUrl}/api/public/login`;
+    const url = `${manualAuthConfig.ssoBaseUrl}/api/public/pre-token/claims`;
 
     const { timestamp, signature, nonce } = await signManualRequest(
       "POST",
@@ -30,23 +30,8 @@ export async function POST(request: NextRequest) {
     console.log("Request Body:", body);
     console.log("Request Headers:", headers);
 
-    const usernameSource = request.headers.get("x-username-source");
-    if (usernameSource) {
-      headers["x-username-source"] = usernameSource;
-    }
-
-    const passSource = request.headers.get("x-pass-source");
-    if (passSource) {
-      headers["x-pass-source"] = passSource;
-    }
-
-    const responseType = request.headers.get("x-response-type");
-    if (responseType) {
-      headers["x-response-type"] = responseType;
-    }
-
     const response = await fetch(
-      `${manualAuthConfig.ssoServerUrl}/public/login`,
+      `${manualAuthConfig.ssoServerUrl}/public/pre-token/claims`,
       {
         method: "POST",
         headers,
@@ -57,16 +42,16 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       return NextResponse.json(
-        { error: "login_failed", message: errorText },
+        { error: "pre_token_failed", message: errorText },
         { status: response.status },
       );
     }
 
     const data = await response.json();
-    console.log("Login successful:", data);
+    console.log("Pre token successful:", data);
     return NextResponse.json(data);
   } catch (error) {
-    console.log("Login error:", (error as Error).message);
+    console.log("pre token error:", (error as Error).message);
     return NextResponse.json(
       { error: "server_error", message: (error as Error).message },
       { status: 500 },

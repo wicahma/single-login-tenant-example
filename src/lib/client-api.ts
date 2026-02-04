@@ -1,6 +1,13 @@
 "use client";
 
-import { TokenResponse, UserInfo } from "@/types/auth";
+import {
+  EPasswordSource,
+  EUsernameSource,
+  PreTokenLoginResponse,
+  TokenResponse,
+  TResponseType,
+  UserInfo,
+} from "@/lib/types/auth";
 
 export interface ApiResponse<T = any> {
   status: boolean;
@@ -78,6 +85,39 @@ export async function refreshAccessToken(
   }
 }
 
+export async function claimPreToken(
+  preToken: string,
+): Promise<ApiResponse<TokenResponse & UserInfo>> {
+  try {
+    const response = await fetch("/api/auth/pre-token/claims", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        preToken,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch user details");
+    }
+
+    return {
+      status: true,
+      data: data.data,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Token refresh failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
 export async function getUserDetails(
   accessToken: string,
 ): Promise<ApiResponse<UserInfo>> {
@@ -112,17 +152,24 @@ export async function getUserDetails(
 export async function loginUser(
   identifier: string,
   password: string,
-  usernameSource: string = "npk",
-  passwordSource: string = "",
+  usernameSource: EUsernameSource = "Npk",
+  passwordSource: EPasswordSource | null = null,
+  responseType: TResponseType = "default",
 ): Promise<ApiResponse<TokenResponse & UserInfo>> {
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-username-source": String(usernameSource),
+      "x-response-type": responseType,
+    };
+
+    if (passwordSource !== null) {
+      headers["x-pass-source"] = String(passwordSource);
+    }
+
     const response = await fetch("/api/auth/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-username-source": usernameSource,
-        ...(passwordSource && { "x-pass-source": passwordSource }),
-      },
+      headers,
       body: JSON.stringify({ identifier, password }),
     });
 
@@ -136,6 +183,22 @@ export async function loginUser(
       "[ClientAPI] Login successful, fetching user info...",
       data.data,
     );
+
+    if (responseType === "pre-token") {
+      console.log("Pre token requested!", data);
+      const preTokenResponse = await claimPreToken(data.data.preToken);
+
+      if (!preTokenResponse.status || !preTokenResponse.data) {
+        throw new Error("Failed to fetch user info after login");
+      }
+
+      console.log("Pre-token login response:", preTokenResponse);
+
+      return {
+        status: true,
+        data: preTokenResponse.data,
+      };
+    }
 
     const userResponse = await getUserDetails(data.data.accessToken);
 
