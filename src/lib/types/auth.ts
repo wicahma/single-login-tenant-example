@@ -128,3 +128,36 @@ export interface UpdateProfileRequest {
   fullName: string;
   phoneNumber: string;
 }
+
+export interface PasswordResetEmailRequest {
+  email: string;
+}
+
+export interface PasswordResetSmsRequest {
+  phoneNumber: string;
+}
+
+export interface PasswordResetSmsResponse {
+  message: string;
+  maskedOtp: string;
+  expiresInMinutes: number;
+}
+
+export interface ValidateSmsOtpRequest {
+  phoneNumber: string;
+  otpCode: string;
+}
+
+export interface ValidateSmsOtpResponse {
+  message: string;
+  passwordToken: string;
+  tokenExpiresInMinutes: number;
+}
+
+export interface PasswordResetRequest {
+  passwordToken: string;
+  newPassword: string;
+  reNewPassword: string;
+}
+
+export type ResetProvider = "email" | "sms";

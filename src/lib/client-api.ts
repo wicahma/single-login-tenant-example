@@ -8,6 +8,9 @@ import {
   UserInfo,
   TokenValidationResponse,
   UpdateProfileRequest,
+  PasswordResetSmsResponse,
+  ValidateSmsOtpResponse,
+  ResetProvider,
 } from "@/lib/types/auth";
 
 export interface ApiResponse<T = any> {
@@ -405,6 +408,147 @@ export async function updateUserProfile(
     };
   } catch (error) {
     console.error("[ClientAPI] Profile update failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function sendPasswordResetEmail(
+  email: string,
+): Promise<ApiResponse<{ message: string }>> {
+  try {
+    const response = await fetch("/api/auth/reset-password/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to send reset email");
+    }
+
+    return {
+      status: true,
+      data: { message: data.message || "Reset email sent successfully" },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Send reset email failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function sendPasswordResetSms(
+  phoneNumber: string,
+): Promise<ApiResponse<PasswordResetSmsResponse>> {
+  try {
+    const response = await fetch("/api/auth/reset-password/sms", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ phoneNumber }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to send SMS");
+    }
+
+    return {
+      status: true,
+      data: {
+        message: data.message,
+        maskedOtp: data.maskedOtp,
+        expiresInMinutes: data.expiresInMinutes,
+      },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Send SMS failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function validateSmsOtp(
+  phoneNumber: string,
+  otpCode: string,
+): Promise<ApiResponse<ValidateSmsOtpResponse>> {
+  try {
+    const response = await fetch("/api/auth/reset-password/sms/validate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ phoneNumber, otpCode }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "OTP validation failed");
+    }
+
+    return {
+      status: true,
+      data: {
+        message: data.message,
+        passwordToken: data.passwordToken,
+        tokenExpiresInMinutes: data.tokenExpiresInMinutes,
+      },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] OTP validation failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function resetPassword(
+  passwordToken: string,
+  newPassword: string,
+  reNewPassword: string,
+  resetProvider: ResetProvider,
+): Promise<ApiResponse<{ message: string }>> {
+  try {
+    const response = await fetch("/api/auth/reset-password/reset", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-reset-provider": resetProvider,
+      },
+      body: JSON.stringify({
+        passwordToken,
+        newPassword,
+        reNewPassword,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Password reset failed");
+    }
+
+    return {
+      status: true,
+      data: { message: data.message || "Password reset successful" },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Password reset failed:", error);
     return {
       status: false,
       error: (error as Error).message,

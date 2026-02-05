@@ -85,6 +85,15 @@ export default function ManualLoginPage() {
             )}
 
             <LoginForm onSubmit={handleSubmit} isLoading={isLoading} />
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => router.push("/reset-password")}
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Forgot your password?
+              </button>
+            </div>
           </Card>
         </div>
       </main>
