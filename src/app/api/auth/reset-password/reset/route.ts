@@ -5,7 +5,7 @@ import { signManualRequest } from "@/lib/crypto";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const url = `${manualAuthConfig.ssoBaseUrl}/api/public/reset-password/reset`;
+    const url = `${manualAuthConfig.ssoServerUrl}/public/reset-password/reset`;
 
     const resetProvider = request.headers.get("x-reset-provider");
 

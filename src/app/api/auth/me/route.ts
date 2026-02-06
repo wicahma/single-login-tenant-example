@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const url = `${manualAuthConfig.ssoBaseUrl}/api/public/me`;
+    const url = `${manualAuthConfig.ssoServerUrl}/public/me`;
 
     // Sign the request
     const { timestamp, signature, nonce } = await signManualRequest(

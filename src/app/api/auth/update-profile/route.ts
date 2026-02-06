@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const url = `${manualAuthConfig.ssoBaseUrl}/api/public/me`;
+    const url = `${manualAuthConfig.ssoServerUrl}/public/me`;
 
     // Sign the request
     const { timestamp, signature, nonce } = await signManualRequest(

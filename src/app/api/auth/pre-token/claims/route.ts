@@ -5,7 +5,7 @@ import { signManualRequest } from "@/lib/crypto";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const url = `${manualAuthConfig.ssoBaseUrl}/api/public/pre-token/claims`;
+    const url = `${manualAuthConfig.ssoServerUrl}/public/pre-token/claims`;
 
     const { timestamp, signature, nonce } = await signManualRequest(
       "POST",

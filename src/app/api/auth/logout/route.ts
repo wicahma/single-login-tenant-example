@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const url = `${manualAuthConfig.ssoBaseUrl}/api/public/logout`;
+    const url = `${manualAuthConfig.ssoServerUrl}/public/logout`;
 
     // Sign the request (logout uses empty body)
     const { timestamp, signature, nonce } = await signManualRequest(

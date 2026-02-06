@@ -2,13 +2,11 @@
 import { getTimestamp, generateNonce } from "./pkce";
 
 async function importPrivateKey(pemKey: string): Promise<CryptoKey> {
-  console.log("Importing private key", pemKey);
   const pemContents = pemKey
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
     .replace(/[\r\n]/g, "");
 
-  console.log("[CryptoUtils] Importing private key from PEM", pemContents);
   const binaryDer = atob(pemContents);
   const bytes = new Uint8Array(binaryDer.length);
   for (let i = 0; i < binaryDer.length; i++) {
@@ -56,7 +54,6 @@ async function computeBodyHash(
   const data = encoder.encode(canonical);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
 
-  // Convert to base64
   return btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
 }
 
@@ -70,7 +67,29 @@ async function buildCanonicalString(params: {
 }): Promise<string> {
   const { timestamp, method, url, bodyHash, keyId, nonce } = params;
   const urlObj = new URL(url);
-  const pathAndQuery = urlObj.pathname.slice(4) + urlObj.search;
+  const pathAndQuery = urlObj.pathname + urlObj.search;
+
+  const joinedData = [
+    timestamp,
+    method.toUpperCase(),
+    urlObj.protocol.replace(":", "") + "://" + urlObj.hostname,
+    pathAndQuery,
+    keyId,
+    bodyHash,
+    nonce,
+  ].join("\n");
+
+  console.log("Canonical String: ", joinedData);
+  console.log("Canon String: ", {
+    timestamp,
+    method,
+    scheme: urlObj.protocol.replace(":", ""),
+    host: urlObj.hostname,
+    pathAndQuery,
+    keyId,
+    bodyHash,
+    nonce,
+  });
 
   return [
     timestamp,
