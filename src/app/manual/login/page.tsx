@@ -32,7 +32,7 @@ export default function ManualLoginPage() {
     try {
       const usernameSource: EUsernameSource = "Npk";
       const passwordSource: EPasswordSource | null = null;
-      const responseType: TResponseType = "pre-token";
+      const responseType: TResponseType = "default";
 
       const response = await loginUser(
         username,

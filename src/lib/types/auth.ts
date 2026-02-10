@@ -114,7 +114,7 @@ export interface AuthSession {
   nonce: string;
 }
 
-export type EUsernameSource = "Npk" | "Aol";
+export type EUsernameSource = "Npk" | "Aol" | "Email";
 export type EPasswordSource = "Cms";
 export type TResponseType = "default" | "pre-token";
 

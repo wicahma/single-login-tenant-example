@@ -126,10 +126,13 @@ export async function getUserDetails(
   accessToken: string,
 ): Promise<ApiResponse<UserInfo>> {
   try {
+    const usernameSource: EUsernameSource = "Aol";
+
     const response = await fetch("/api/auth/me", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        "x-username-source": String(usernameSource),
         Authorization: `Bearer ${accessToken}`,
       },
     });
@@ -196,11 +199,25 @@ export async function loginUser(
         throw new Error("Failed to fetch user info after login");
       }
 
+      const userResponse = await getUserDetails(
+        preTokenResponse.data.accessToken,
+      );
+
+      if (!userResponse.status || !userResponse.data) {
+        throw new Error("Failed to fetch user info after login");
+      }
+
       console.log("Pre-token login response:", preTokenResponse);
 
       return {
         status: true,
-        data: preTokenResponse.data,
+        data: {
+          accessToken: preTokenResponse.data.accessToken,
+          refreshToken: preTokenResponse.data.refreshToken,
+          expiresIn: preTokenResponse.data.expiresIn,
+          tokenType: preTokenResponse.data.tokenType || "Bearer",
+          ...userResponse.data,
+        },
       };
     }
 
