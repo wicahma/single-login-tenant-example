@@ -166,7 +166,7 @@ export default function EmailResetPage() {
                   <div>
                     <Input
                       label="New Password"
-                      type="password"
+                      type="text"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Enter new password"
@@ -181,7 +181,7 @@ export default function EmailResetPage() {
                   <div>
                     <Input
                       label="Confirm New Password"
-                      type="password"
+                      type="text"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirm new password"

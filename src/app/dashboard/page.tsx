@@ -6,7 +6,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, Button, LoadingSpinner } from "@/components/atoms";
 import { UserProfile } from "@/components/molecules";
 import { Header } from "@/components/organisms";
-import { validateToken, updateUserProfile } from "@/lib/client-api";
+import {
+  validateToken,
+  updateUserProfile,
+  changePassword,
+} from "@/lib/client-api";
 import { storageKeys } from "@/config";
 
 export default function DashboardPage() {
@@ -32,6 +36,15 @@ export default function DashboardPage() {
   const [profileForm, setProfileForm] = useState({
     fullName: "",
     phoneNumber: "",
+  });
+
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showChangePasswordForm, setShowChangePasswordForm] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+    passwordType: undefined as number | undefined,
   });
 
   useEffect(() => {
@@ -121,7 +134,7 @@ export default function DashboardPage() {
         return;
       }
 
-      const result = await validateToken(accessToken, "access");
+      const result = await validateToken(accessToken, "access_token");
 
       console.log("Access token validation result:", result);
       if (result.status && result.data) {
@@ -167,7 +180,7 @@ export default function DashboardPage() {
         return;
       }
 
-      const result = await validateToken(refreshTokenValue, "refresh");
+      const result = await validateToken(refreshTokenValue, "refresh_token");
 
       if (result.status && result.data) {
         if (result.data.isValid) {
@@ -229,6 +242,59 @@ export default function DashboardPage() {
       setError("Failed to update profile: " + (err as Error).message);
     } finally {
       setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsChangingPassword(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const accessToken = localStorage.getItem(storageKeys.accessToken);
+      if (!accessToken) {
+        setError("No access token found");
+        return;
+      }
+
+      // Validate passwords match
+      if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+        setError("New password and confirm password do not match");
+        return;
+      }
+
+      const result = await changePassword(
+        accessToken,
+        passwordForm.currentPassword,
+        passwordForm.newPassword,
+        passwordForm.confirmNewPassword,
+        passwordForm.passwordType,
+      );
+
+      console.log("Change Pass response", result);
+
+      if (result.status) {
+        setSuccessMessage(
+          result.message ||
+            "Password changed successfully! You may need to login again.",
+        );
+        setShowChangePasswordForm(false);
+        // Reset form
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmNewPassword: "",
+          passwordType: undefined,
+        });
+      } else {
+        setError(result.error || "Failed to change password");
+      }
+    } catch (err) {
+      console.error("[Dashboard] Password change failed:", err);
+      setError("Failed to change password: " + (err as Error).message);
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -454,6 +520,134 @@ export default function DashboardPage() {
                         }
                       }}
                       disabled={isUpdatingProfile}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </Card>
+
+            <Card>
+              <h2 className="text-xl font-bold mb-4">Change Password</h2>
+
+              {!showChangePasswordForm ? (
+                <div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Change your account password securely.
+                  </p>
+                  <Button onClick={() => setShowChangePasswordForm(true)}>
+                    Change Password
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Current Password
+                    </label>
+                    <input
+                      type="text"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) =>
+                        setPasswordForm({
+                          ...passwordForm,
+                          currentPassword: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                      autoComplete="current-password"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="text"
+                      value={passwordForm.newPassword}
+                      onChange={(e) =>
+                        setPasswordForm({
+                          ...passwordForm,
+                          newPassword: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                      autoComplete="new-password"
+                      minLength={8}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Minimum 8 characters
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="text"
+                      value={passwordForm.confirmNewPassword}
+                      onChange={(e) =>
+                        setPasswordForm({
+                          ...passwordForm,
+                          confirmNewPassword: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                      autoComplete="new-password"
+                      minLength={8}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Password Type (Optional)
+                    </label>
+                    <input
+                      type="number"
+                      value={passwordForm.passwordType ?? ""}
+                      onChange={(e) =>
+                        setPasswordForm({
+                          ...passwordForm,
+                          passwordType: e.target.value
+                            ? Number.parseInt(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Leave empty if not required"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Optional: Enter an integer value if required by your
+                      system
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button type="submit" disabled={isChangingPassword}>
+                      {isChangingPassword
+                        ? "Changing Password..."
+                        : "Change Password"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowChangePasswordForm(false);
+                        // Reset form
+                        setPasswordForm({
+                          currentPassword: "",
+                          newPassword: "",
+                          confirmNewPassword: "",
+                          passwordType: undefined,
+                        });
+                      }}
+                      disabled={isChangingPassword}
                     >
                       Cancel
                     </Button>

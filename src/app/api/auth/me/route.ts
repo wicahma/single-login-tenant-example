@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { EUsernameSource } from "@/lib/types/auth";
 
 export async function GET(request: NextRequest) {
   try {
     const authorization = request.headers.get("authorization");
+    const usernameSource: EUsernameSource =
+      (request.headers.get("x-username-source") as EUsernameSource) || "Aol";
 
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json(
@@ -38,6 +41,7 @@ export async function GET(request: NextRequest) {
       "X-Key-Id": manualAuthConfig.keyId,
       "X-Nonce": nonce,
       Authorization: authorization,
+      "x-username-source": usernameSource,
     };
 
     const response = await fetch(`${manualAuthConfig.ssoServerUrl}/public/me`, {

@@ -62,7 +62,10 @@ export default function HomePage() {
 
                 <div className="grid md:grid-cols-2 gap-4 mb-6">
                   <div className="border rounded p-4">
-                    <h3 className="font-bold mb-2">OAuth 2.0 / OIDC</h3>
+                    <h3 className="font-bold mb-2">
+                      OAuth 2.0 / OIDC{" "}
+                      <span className="text-red-500">(Deprecated)</span>
+                    </h3>
                     <p className="text-sm text-gray-600 mb-4">
                       Authorization Code Flow with PKCE. Redirects to SSO login
                       page.

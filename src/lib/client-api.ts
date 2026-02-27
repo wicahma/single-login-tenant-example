@@ -359,7 +359,7 @@ export async function revokeOAuthToken(
 
 export async function validateToken(
   token: string,
-  tokenType: "access" | "refresh",
+  tokenType: "access_token" | "refresh_token",
 ): Promise<ApiResponse<TokenValidationResponse>> {
   try {
     const response = await fetch("/api/auth/validate-token", {
@@ -566,6 +566,54 @@ export async function resetPassword(
     };
   } catch (error) {
     console.error("[ClientAPI] Password reset failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function changePassword(
+  accessToken: string,
+  currentPassword: string,
+  newPassword: string,
+  confirmNewPassword: string,
+  passwordType?: number,
+): Promise<ApiResponse<{ message: string }>> {
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    };
+
+    // Add optional password type header
+    if (passwordType !== undefined) {
+      headers["x-password-type"] = String(passwordType);
+    }
+
+    const response = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+        confirmNewPassword,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Password change failed");
+    }
+
+    return {
+      status: true,
+      data: { message: data.message || "Password changed successfully" },
+      message: data.message,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Password change failed:", error);
     return {
       status: false,
       error: (error as Error).message,

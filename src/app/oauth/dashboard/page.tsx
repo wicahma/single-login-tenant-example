@@ -285,7 +285,8 @@ export default function OAuthDashboardPage() {
                     Authentication Method
                   </span>
                   <span className="text-sm text-slate-900 font-semibold">
-                    OAuth 2.0 / OIDC
+                    OAuth 2.0 / OIDC{" "}
+                    <span className="text-red-500">(Deprecated)</span>
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">

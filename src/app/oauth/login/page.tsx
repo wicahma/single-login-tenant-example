@@ -64,7 +64,9 @@ export default function OAuthLoginPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <Card>
-            <h1 className="text-2xl font-bold mb-6">OAuth 2.0 Login</h1>
+            <h1 className="text-2xl font-bold mb-6">
+              OAuth 2.0 Login <span className="text-red-500">(Deprecated)</span>
+            </h1>
             <p className="text-gray-600 mb-6">
               Click the button below to login via Single Sign-On using OAuth 2.0
               with PKCE.
