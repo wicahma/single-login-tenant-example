@@ -11,6 +11,9 @@ import {
   PasswordResetSmsResponse,
   ValidateSmsOtpResponse,
   ResetProvider,
+  UserProfileData,
+  UserWorkInfo,
+  UserUamWorkInfo,
 } from "@/lib/types/auth";
 
 export interface ApiResponse<T = any> {
@@ -142,6 +145,8 @@ export async function getUserDetails(
     if (!response.ok) {
       throw new Error(data.message || "Failed to fetch user details");
     }
+
+    console.log("[ClientAPI] Fetched user details:", data);
 
     return {
       status: true,
@@ -566,6 +571,112 @@ export async function resetPassword(
     };
   } catch (error) {
     console.error("[ClientAPI] Password reset failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function getUserProfile(
+  accessToken: string,
+): Promise<ApiResponse<UserProfileData>> {
+  try {
+    const response = await fetch("/api/auth/me/profile", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch user profile");
+    }
+
+    return {
+      status: true,
+      data: data.data,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Failed to fetch user profile:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function getUserWorks(
+  accessToken: string,
+): Promise<ApiResponse<UserWorkInfo[]>> {
+  try {
+    const response = await fetch("/api/auth/me/works", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch user works");
+    }
+
+    return {
+      status: true,
+      data: data.data,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Failed to fetch user works:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function getUserUam(
+  accessToken: string,
+  workId?: number | null,
+  uamAolId?: number | null,
+): Promise<ApiResponse<UserUamWorkInfo[] | UserUamWorkInfo>> {
+  try {
+    let url = "/api/auth/me/uam";
+    if (workId != null && uamAolId === null) {
+      url += `?workId=${workId}`;
+    }
+    if (uamAolId != null && workId === null) {
+      url += `?uamAolId=${uamAolId}`;
+    }
+    if (workId != null && uamAolId != null) {
+      url += `?workId=${workId}&uamAolId=${uamAolId}`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch user UAM data");
+    }
+
+    return {
+      status: true,
+      data: data.data,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Failed to fetch user UAM data:", error);
     return {
       status: false,
       error: (error as Error).message,

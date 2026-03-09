@@ -161,3 +161,111 @@ export interface PasswordResetRequest {
 }
 
 export type ResetProvider = "email" | "sms";
+
+// ─── Public API: /public/me/profile, /public/me/works, /public/me/uam ───────
+
+export interface ApplicationInfo {
+  id: number;
+  appName: string;
+  appIdentifier: string;
+  isActive: boolean;
+}
+
+export interface UserProfileData {
+  id: number;
+  email: string;
+  fullName: string;
+  phoneNumber: string;
+  npk: string;
+  application: ApplicationInfo | null;
+}
+
+export interface PositionInfo {
+  id: number;
+  name: string;
+  hcId: number | null;
+}
+
+export interface BranchInfo {
+  id: number;
+  name: string;
+  code: string;
+}
+
+export interface DepartmentInfo {
+  id: number;
+  name: string;
+  hcId: number | null;
+}
+
+export interface CompanyInfo {
+  id: number;
+  name: string;
+  hcId: number | null;
+}
+
+export interface GroupInfo {
+  id: number;
+  groupName: string;
+  groupSource: number;
+  groupSourceName: string;
+}
+
+export interface UserWorkInfo {
+  workId: number | null;
+  uamAolId: number | null;
+  position: PositionInfo;
+  branch: BranchInfo;
+  department: DepartmentInfo;
+  company: CompanyInfo;
+  group: GroupInfo | null;
+  uamData: null;
+  isActive: boolean;
+  expiredAt: string | null;
+}
+
+export interface MenuPermissionResponse {
+  menuId: number;
+  menuName: string;
+  isView: boolean;
+  isCreate: boolean;
+  isEdit: boolean;
+  isDelete: boolean;
+}
+
+export interface UamInfo {
+  uamId: number;
+  applicationId: number;
+  menuInfo: MenuPermissionResponse[] | null;
+  detailData: Record<string, string> | null;
+}
+
+export interface AolUserDetailInfo {
+  idUser: string;
+  nameUser: string;
+  groupUser: string | null;
+  flagActive: string | null;
+  npk: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  userLevel: string | null;
+  status: string | null;
+  flagLockPassword: string | null;
+  countFaultLogin: number | null;
+  dateLastLogin: string | null;
+  flagChangePassword: string | null;
+  [key: string]: unknown;
+}
+
+export interface UserUamWorkInfo {
+  workId: number | null;
+  position: PositionInfo;
+  branch: BranchInfo;
+  department: DepartmentInfo;
+  company: CompanyInfo;
+  group: GroupInfo | null;
+  uamData: UamInfo | null;
+  isActive: boolean;
+  expiredAt: string | null;
+  aolDetail: AolUserDetailInfo | null;
+}

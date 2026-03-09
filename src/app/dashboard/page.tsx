@@ -10,8 +10,16 @@ import {
   validateToken,
   updateUserProfile,
   changePassword,
+  getUserProfile,
+  getUserWorks,
+  getUserUam,
 } from "@/lib/client-api";
 import { storageKeys } from "@/config";
+import type {
+  UserProfileData,
+  UserWorkInfo,
+  UserUamWorkInfo,
+} from "@/lib/types/auth";
 
 export default function DashboardPage() {
   const { isAuthenticated, user, logout, fetchUserDetails, refreshToken } =
@@ -47,6 +55,17 @@ export default function DashboardPage() {
     passwordType: undefined as number | undefined,
   });
 
+  // --- New Public API state ---
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
+  const [userWorks, setUserWorks] = useState<UserWorkInfo[]>([]);
+  const [selectedWorkId, setSelectedWorkId] = useState<number | null>(null);
+  const [workUam, setWorkUam] = useState<UserUamWorkInfo | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isLoadingWorks, setIsLoadingWorks] = useState(false);
+  const [isLoadingUam, setIsLoadingUam] = useState(false);
+  const [worksError, setWorksError] = useState<string | null>(null);
+  const [uamError, setUamError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/");
@@ -58,6 +77,7 @@ export default function DashboardPage() {
         fullName: user.name || "",
         phoneNumber: user.phoneNumber || "",
       });
+      loadPublicApiData();
     } else {
       loadUserDetails();
     }
@@ -75,6 +95,7 @@ export default function DashboardPage() {
           fullName: userData.name || "",
           phoneNumber: userData.phoneNumber || "",
         });
+        loadPublicApiData();
       } else {
         setError("Failed to load user data");
       }
@@ -83,6 +104,76 @@ export default function DashboardPage() {
       setError("Failed to load user data: " + (err as Error).message);
     } finally {
       setIsLoadingUser(false);
+    }
+  };
+
+  const loadPublicApiData = async () => {
+    const accessToken = localStorage.getItem(storageKeys.accessToken);
+    if (!accessToken) return;
+
+    setIsLoadingProfile(true);
+    setIsLoadingWorks(true);
+    setWorksError(null);
+
+    const [profileResult, worksResult] = await Promise.all([
+      getUserProfile(accessToken),
+      getUserWorks(accessToken),
+    ]);
+
+    console.log("Profile API result:", profileResult);
+    console.log("Works API result:", worksResult);
+
+    if (profileResult.status && profileResult.data) {
+      setUserProfile(profileResult.data);
+    }
+    setIsLoadingProfile(false);
+
+    if (worksResult.status && worksResult.data) {
+      setUserWorks(worksResult.data);
+    } else {
+      setWorksError(worksResult.error || "Failed to load works");
+    }
+    setIsLoadingWorks(false);
+  };
+
+  const handleSelectWork = async (
+    workId: number | null,
+    uamAolId: number | null,
+  ) => {
+    const accessToken = localStorage.getItem(storageKeys.accessToken);
+    if (!accessToken) return;
+
+    if (workId) {
+      setSelectedWorkId(workId);
+    } else {
+      setSelectedWorkId(uamAolId);
+    }
+    setWorkUam(null);
+    setUamError(null);
+    setIsLoadingUam(true);
+
+    try {
+      const result = await getUserUam(accessToken, workId, uamAolId);
+      if (result.status && result.data) {
+        // Single object when workId is provided
+        console.log(
+          "UAM API result for workId",
+          workId,
+          ":",
+          "uamAolId",
+          uamAolId,
+          result,
+        );
+        setWorkUam(result.data as UserUamWorkInfo);
+      } else {
+        setUamError(
+          result.error || "No UAM data found for this work assignment",
+        );
+      }
+    } catch (err) {
+      setUamError("Failed to load UAM data: " + (err as Error).message);
+    } finally {
+      setIsLoadingUam(false);
     }
   };
 
@@ -655,6 +746,356 @@ export default function DashboardPage() {
                 </form>
               )}
             </Card>
+
+            {/* ── User Profile (Public API) ── */}
+            <Card>
+              <h2 className="text-xl font-bold mb-4">
+                User Profile (Public API)
+              </h2>
+              {isLoadingProfile && (
+                <div className="flex items-center py-4">
+                  <LoadingSpinner />
+                  <span className="ml-3 text-gray-600">Loading profile...</span>
+                </div>
+              )}
+              {!isLoadingProfile && userProfile && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(
+                    [
+                      ["ID", userProfile.id],
+                      ["Full Name", userProfile.fullName],
+                      ["Email", userProfile.email],
+                      ["Phone", userProfile.phoneNumber],
+                      ["NPK", userProfile.npk],
+                    ] as [string, string | number][]
+                  ).map(([label, value]) => (
+                    <div key={label} className="bg-slate-50 rounded p-3">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        {label}
+                      </p>
+                      <p className="text-sm font-medium text-gray-800 mt-0.5">
+                        {String(value)}
+                      </p>
+                    </div>
+                  ))}
+                  {userProfile.application && (
+                    <div className="bg-slate-50 rounded p-3 sm:col-span-2">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        Application
+                      </p>
+                      <p className="text-sm font-medium text-gray-800 mt-0.5">
+                        {userProfile.application.appName}{" "}
+                        <span className="text-xs text-gray-500">
+                          ({userProfile.application.appIdentifier})
+                        </span>{" "}
+                        <span
+                          className={`text-xs font-semibold ${
+                            userProfile.application.isActive
+                              ? "text-green-600"
+                              : "text-red-500"
+                          }`}
+                        >
+                          {userProfile.application.isActive
+                            ? "Active"
+                            : "Inactive"}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {!isLoadingProfile && !userProfile && (
+                <p className="text-gray-500 text-sm">No profile data loaded.</p>
+              )}
+            </Card>
+
+            {/* ── User Works ── */}
+            <Card>
+              <h2 className="text-xl font-bold mb-4">User Works</h2>
+              {isLoadingWorks && (
+                <div className="flex items-center py-4">
+                  <LoadingSpinner />
+                  <span className="ml-3 text-gray-600">Loading works...</span>
+                </div>
+              )}
+              {!isLoadingWorks && worksError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                  {worksError}
+                </div>
+              )}
+              {!isLoadingWorks && !worksError && userWorks.length === 0 && (
+                <p className="text-gray-500 text-sm">
+                  No work assignments found.
+                </p>
+              )}
+              {!isLoadingWorks && !worksError && userWorks.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500 mb-3">
+                    Select a work assignment to view UAM details.
+                  </p>
+                  {userWorks.map((work, idx) => {
+                    const isSelected = selectedWorkId === work.workId;
+                    const isAolOnly = work.workId === null;
+                    return (
+                      <button
+                        key={work.workId ?? `aol-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          console.log("Selected work:", work);
+                          handleSelectWork(work.workId, work.uamAolId);
+                        }}
+                        className={`w-full text-left rounded-lg border p-4 transition-all ${
+                          isSelected
+                            ? "border-blue-500 ring-2 ring-blue-300 bg-blue-50"
+                            : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-gray-900">
+                                {work.position.name}
+                              </span>
+                              {isAolOnly && (
+                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                                  AOL-sourced
+                                </span>
+                              )}
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  work.isActive
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                {work.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {work.branch.name}
+                              {work.company.name
+                                ? ` · ${work.company.name}`
+                                : ""}
+                              {work.department.name
+                                ? ` · ${work.department.name}`
+                                : ""}
+                            </p>
+                            {work.group && (
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                Group: {work.group.groupName}{" "}
+                                <span className="italic">
+                                  ({work.group.groupSourceName})
+                                </span>
+                              </p>
+                            )}
+                          </div>
+                          {isSelected && (
+                            <span className="text-blue-600 text-xs font-semibold shrink-0">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+
+            {/* ── UAM Details ── */}
+            {selectedWorkId !== null && (
+              <Card>
+                <h2 className="text-xl font-bold mb-4">UAM Details</h2>
+                {isLoadingUam && (
+                  <div className="flex items-center py-4">
+                    <LoadingSpinner />
+                    <span className="ml-3 text-gray-600">
+                      Loading UAM data...
+                    </span>
+                  </div>
+                )}
+                {!isLoadingUam && uamError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                    {uamError}
+                  </div>
+                )}
+                {!isLoadingUam && !uamError && workUam && (
+                  <div className="space-y-6">
+                    {/* Work summary */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {(
+                        [
+                          ["Position", workUam.position?.name || "-"],
+                          ["Branch", workUam.branch?.name || "-"],
+                          ["Department", workUam.department?.name || "—"],
+                          ["Company", workUam.company?.name || "—"],
+                          ["Group", workUam.group?.groupName ?? "—"],
+                          ["Expires At", workUam.expiredAt ?? "Never"],
+                        ] as [string, string][]
+                      ).map(([label, value]) => (
+                        <div key={label} className="bg-slate-50 rounded p-3">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">
+                            {label}
+                          </p>
+                          <p className="text-sm font-medium text-gray-800 mt-0.5">
+                            {value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* UAM permissions */}
+                    {workUam.uamData ? (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+                          UAM Permissions
+                        </h3>
+                        {workUam.uamData.menuInfo &&
+                        workUam.uamData.menuInfo.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  {[
+                                    "Menu",
+                                    "View",
+                                    "Create",
+                                    "Edit",
+                                    "Delete",
+                                  ].map((h) => (
+                                    <th
+                                      key={h}
+                                      className="text-left px-3 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide border-b border-gray-200"
+                                    >
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {workUam.uamData.menuInfo.map((menu) => (
+                                  <tr
+                                    key={menu.menuId}
+                                    className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
+                                  >
+                                    <td className="px-3 py-2 font-medium text-gray-800">
+                                      {menu.menuName}
+                                    </td>
+                                    {(
+                                      [
+                                        ["view", menu.isView],
+                                        ["create", menu.isCreate],
+                                        ["edit", menu.isEdit],
+                                        ["delete", menu.isDelete],
+                                      ] as [string, boolean][]
+                                    ).map(([permKey, perm]) => (
+                                      <td key={permKey} className="px-3 py-2">
+                                        <span
+                                          className={`inline-block w-5 h-5 rounded-full text-center text-xs leading-5 font-bold ${
+                                            perm
+                                              ? "bg-green-100 text-green-700"
+                                              : "bg-gray-100 text-gray-400"
+                                          }`}
+                                        >
+                                          {perm ? "✓" : "✗"}
+                                        </span>
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">
+                            No menu permissions assigned.
+                          </p>
+                        )}
+
+                        {/* Detail data */}
+                        {workUam.uamData.detailData &&
+                          Object.keys(workUam.uamData.detailData).length >
+                            0 && (
+                            <div className="mt-4">
+                              <h3 className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                                UAM Detail Fields
+                              </h3>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {Object.entries(workUam.uamData.detailData).map(
+                                  ([label, value]) => (
+                                    <div
+                                      key={label}
+                                      className="bg-slate-50 rounded p-3"
+                                    >
+                                      <p className="text-xs text-gray-500">
+                                        {label}
+                                      </p>
+                                      <p className="text-sm font-medium text-gray-800 mt-0.5">
+                                        {value}
+                                      </p>
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-700 text-sm">
+                        No UAM record found for this work assignment in the
+                        current application.
+                      </div>
+                    )}
+
+                    {/* AOL detail */}
+                    {workUam.aolDetail && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+                          AOL User Detail
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {(
+                            [
+                              ["AOL ID", workUam.aolDetail.idUser],
+                              ["Name", workUam.aolDetail.nameUser],
+                              ["Group", workUam.aolDetail.groupUser ?? "—"],
+                              ["NPK", workUam.aolDetail.npk ?? "—"],
+                              ["Email", workUam.aolDetail.email ?? "—"],
+                              ["Phone", workUam.aolDetail.phoneNumber ?? "—"],
+                              ["Status", workUam.aolDetail.status ?? "—"],
+                              [
+                                "Active Flag",
+                                workUam.aolDetail.flagActive ?? "—",
+                              ],
+                              [
+                                "Last Login",
+                                workUam.aolDetail.dateLastLogin ?? "—",
+                              ],
+                              [
+                                "Lock Password",
+                                workUam.aolDetail.flagLockPassword ?? "—",
+                              ],
+                            ] as [string, string][]
+                          ).map(([label, value]) => (
+                            <div
+                              key={label}
+                              className="bg-slate-50 rounded p-3"
+                            >
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">
+                                {label}
+                              </p>
+                              <p className="text-sm font-medium text-gray-800 mt-0.5">
+                                {value}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
         </div>
       </main>
