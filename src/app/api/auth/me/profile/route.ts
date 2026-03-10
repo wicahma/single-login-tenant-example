@@ -37,8 +37,6 @@ export async function GET(request: NextRequest) {
       "X-Key-Id": manualAuthConfig.keyId,
       "X-Nonce": nonce,
       Authorization: authorization,
-      "x-app-id": manualAuthConfig.appIdentifier,
-      "x-app-secret": manualAuthConfig.apiKey,
     };
 
     if (manualAuthConfig.usernameSource) {

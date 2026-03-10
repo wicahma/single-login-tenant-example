@@ -112,6 +112,8 @@ export async function claimPreToken(
       throw new Error(data.message || "Failed to fetch user details");
     }
 
+    console.log("[ClientAPI] Fetched user details with pre-token:", data);
+
     return {
       status: true,
       data: data.data,
@@ -191,10 +193,7 @@ export async function loginUser(
       throw new Error(data.message || "Login failed");
     }
 
-    console.log(
-      "[ClientAPI] Login successful, fetching user info...",
-      data.data,
-    );
+    console.log("[ClientAPI] Login successful, fetching user info...", data);
 
     if (responseType === "pre-token") {
       console.log("Pre token requested!", data);
@@ -312,6 +311,8 @@ export async function getOAuthUserInfo(
       );
     }
 
+    console.log("[ClientAPI] Fetched OAuth user info:", data);
+
     return {
       status: true,
       data: data,
@@ -380,11 +381,11 @@ export async function validateToken(
 
     const data = await response.json();
 
-    console.log("Token validation response data in client:", data);
-
     if (!response.ok) {
       throw new Error(data.message || "Token validation failed");
     }
+
+    console.log("[ClientAPI] Token validation response:", data);
 
     return {
       status: true,
@@ -423,6 +424,8 @@ export async function updateUserProfile(
       throw new Error(data.message || "Profile update failed");
     }
 
+    console.log("[ClientAPI] Fetched user profile update data:", data);
+
     return {
       status: true,
       data: data,
@@ -455,6 +458,8 @@ export async function sendPasswordResetEmail(
       throw new Error(data.message || "Failed to send reset email");
     }
 
+    console.log("[ClientAPI] Fetched password reset email data:", data);
+
     return {
       status: true,
       data: { message: data.message || "Reset email sent successfully" },
@@ -485,6 +490,8 @@ export async function sendPasswordResetSms(
     if (!response.ok) {
       throw new Error(data.message || "Failed to send SMS");
     }
+
+    console.log("[ClientAPI] Fetched SMS reset data:", data);
 
     return {
       status: true,
@@ -596,6 +603,8 @@ export async function getUserProfile(
       throw new Error(data.message || "Failed to fetch user profile");
     }
 
+    console.log("[ClientAPI] Fetched user profile:", data);
+
     return {
       status: true,
       data: data.data,
@@ -626,6 +635,8 @@ export async function getUserWorks(
     if (!response.ok) {
       throw new Error(data.message || "Failed to fetch user works");
     }
+
+    console.log("[ClientAPI] Fetched user works:", data);
 
     return {
       status: true,
@@ -670,6 +681,8 @@ export async function getUserUam(
     if (!response.ok) {
       throw new Error(data.message || "Failed to fetch user UAM data");
     }
+
+    console.log("[ClientAPI] Fetched user UAM data:", data);
 
     return {
       status: true,
