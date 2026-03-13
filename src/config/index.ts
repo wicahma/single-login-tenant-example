@@ -18,7 +18,7 @@ export const manualAuthConfig = {
   backendUrl: "/api",
   defaultUsernameSource: "npk",
   defaultPasswordSource: "",
-  usernameSource: process.env.USERNAME_SOURCE || "",
+  usernameSource: process.env.NEXT_PUBLIC_USERNAME_SOURCE || "",
 };
 
 export const storageKeys = {

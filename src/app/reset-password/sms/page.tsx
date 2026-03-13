@@ -53,14 +53,16 @@ export default function SmsResetPage() {
     }
   };
 
-  const handleValidateOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleValidateOtp = async () => {
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
+    console.log("Validating OTP for phone number:", phoneNumber);
 
     try {
       const result = await validateSmsOtp(phoneNumber, otpCode);
+
+      console.log("OTP validation result:", result);
 
       if (result.status && result.data) {
         setPasswordToken(result.data.passwordToken);
@@ -252,7 +254,7 @@ export default function SmsResetPage() {
                     Code hint: {maskedOtp} (expires in {otpExpiresIn} minutes)
                   </p>
                 )}
-                <form onSubmit={handleValidateOtp} className="space-y-4">
+                <div className="space-y-4">
                   <div>
                     <Input
                       label="OTP Code"
@@ -269,7 +271,12 @@ export default function SmsResetPage() {
                     </p>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button
+                    type="button"
+                    onClick={handleValidateOtp}
+                    className="w-full"
+                    disabled={isLoading}
+                  >
                     {isLoading ? (
                       <span className="flex items-center justify-center">
                         <LoadingSpinner />
@@ -294,7 +301,7 @@ export default function SmsResetPage() {
                   >
                     Request New Code
                   </Button>
-                </form>
+                </div>
               </>
             )}
 

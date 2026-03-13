@@ -1,5 +1,6 @@
 "use client";
 
+import { manualAuthConfig } from "@/config";
 import {
   EPasswordSource,
   EUsernameSource,
@@ -21,8 +22,8 @@ export interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   error?: string;
+  metadata?: Record<string, any>;
 }
-
 export async function logoutUser(
   accessToken: string,
 ): Promise<ApiResponse<void>> {
@@ -131,7 +132,8 @@ export async function getUserDetails(
   accessToken: string,
 ): Promise<ApiResponse<UserInfo>> {
   try {
-    const usernameSource: EUsernameSource = "Aol";
+    const usernameSource: EUsernameSource = (manualAuthConfig.usernameSource ||
+      "Npk") as EUsernameSource;
 
     const response = await fetch("/api/auth/me", {
       method: "GET",
@@ -180,6 +182,8 @@ export async function loginUser(
     if (passwordSource !== null) {
       headers["x-pass-source"] = String(passwordSource);
     }
+
+    console.log("[ClientAPI] Attempting login with headers:", headers);
 
     const response = await fetch("/api/auth/login", {
       method: "POST",
@@ -553,6 +557,12 @@ export async function resetPassword(
   resetProvider: ResetProvider,
 ): Promise<ApiResponse<{ message: string }>> {
   try {
+    console.log(
+      "[ClientAPI] Resetting password with token:",
+      passwordToken,
+      "and provider:",
+      resetProvider,
+    );
     const response = await fetch("/api/auth/reset-password/reset", {
       method: "POST",
       headers: {
@@ -711,7 +721,7 @@ export async function changePassword(
     };
 
     // Add optional password type header
-    if (passwordType !== undefined) {
+    if (![null, undefined, "", 0].includes(passwordType)) {
       headers["x-password-type"] = String(passwordType);
     }
 

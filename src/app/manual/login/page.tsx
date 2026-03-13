@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/molecules";
 import { Header } from "@/components/organisms";
 import { useAuth } from "@/contexts/AuthContext";
 import { loginUser } from "@/lib/client-api";
-import { loginMethods } from "@/config";
+import { loginMethods, manualAuthConfig } from "@/config";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -30,9 +30,13 @@ export default function ManualLoginPage() {
     setError(null);
 
     try {
-      const usernameSource: EUsernameSource = "Npk";
+      const usernameSource: EUsernameSource =
+        (manualAuthConfig.usernameSource || "Npk") as EUsernameSource;
       const passwordSource: EPasswordSource | null = null;
       const responseType: TResponseType = "pre-token";
+      console.log(
+        `Submitting login with username: ${username}, password: ${password}, usernameSource: ${usernameSource}, passwordSource: ${passwordSource}, responseType: ${responseType}`,
+      );
 
       const response = await loginUser(
         username,
