@@ -11,11 +11,13 @@ import {
   UpdateProfileRequest,
   PasswordResetSmsResponse,
   ValidateSmsOtpResponse,
+  ValidateEmailOtpResponse,
   ResetProvider,
   UserProfileData,
   UserWorkInfo,
   UserUamWorkInfo,
 } from "@/lib/types/auth";
+import { encryptAES } from "@/lib/encryption";
 
 export interface ApiResponse<T = any> {
   status: boolean;
@@ -66,10 +68,12 @@ export async function refreshAccessToken(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify({ refreshToken, workId: 60 }),
     });
 
     const data = await response.json();
+
+    console.log("[ClientAPI] Refresh token data:", data);
 
     if (!response.ok) {
       throw new Error(data.message || "Token refresh failed");
@@ -188,7 +192,10 @@ export async function loginUser(
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers,
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({
+        identifier: encryptAES(identifier),
+        password: encryptAES(password),
+      }),
     });
 
     const data = await response.json();
@@ -453,7 +460,7 @@ export async function sendPasswordResetEmail(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: encryptAES(email) }),
     });
 
     const data = await response.json();
@@ -486,7 +493,7 @@ export async function sendPasswordResetSms(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ phoneNumber }),
+      body: JSON.stringify({ phoneNumber: encryptAES(phoneNumber) }),
     });
 
     const data = await response.json();
@@ -524,10 +531,15 @@ export async function validateSmsOtp(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ phoneNumber, otpCode }),
+      body: JSON.stringify({
+        phoneNumber: encryptAES(phoneNumber),
+        otpCode: encryptAES(otpCode),
+      }),
     });
 
     const data = await response.json();
+
+    console.log("[ClientAPI] Fetched OTP validation data:", data);
 
     if (!response.ok) {
       throw new Error(data.message || "OTP validation failed");
@@ -536,9 +548,9 @@ export async function validateSmsOtp(
     return {
       status: true,
       data: {
-        message: data.message,
-        passwordToken: data.passwordToken,
-        tokenExpiresInMinutes: data.tokenExpiresInMinutes,
+        message: data.data.message,
+        passwordToken: data.data.passwordToken,
+        tokenExpiresInMinutes: data.data.tokenExpiresInMinutes,
       },
     };
   } catch (error) {
@@ -571,8 +583,8 @@ export async function resetPassword(
       },
       body: JSON.stringify({
         passwordToken,
-        newPassword,
-        reNewPassword,
+        newPassword: encryptAES(newPassword),
+        reNewPassword: encryptAES(reNewPassword),
       }),
     });
 
@@ -707,6 +719,66 @@ export async function getUserUam(
   }
 }
 
+export async function sendPasswordResetEmailOtp(
+  email: string,
+): Promise<ApiResponse<{ message: string; expiresInMinutes: number }>> {
+  try {
+    const response = await fetch("/api/auth/reset-password/email-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: encryptAES(email) }),
+    });
+    const data = await response.json();
+    if (!response.ok)
+      throw new Error(data.message || "Failed to send email OTP");
+    console.log("[ClientAPI] Fetched email OTP reset data:", data);
+    return {
+      status: true,
+      data: {
+        message: data.data?.message || data.message,
+        expiresInMinutes: data.data?.expiresInMinutes,
+      },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Send email OTP failed:", error);
+    return { status: false, error: (error as Error).message };
+  }
+}
+
+export async function validateEmailOtp(
+  email: string,
+  otpCode: string,
+): Promise<ApiResponse<ValidateEmailOtpResponse>> {
+  try {
+    const response = await fetch(
+      "/api/auth/reset-password/email-otp/validate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: encryptAES(email),
+          otpCode: encryptAES(otpCode),
+        }),
+      },
+    );
+    const data = await response.json();
+    console.log("[ClientAPI] Fetched email OTP validation data:", data);
+    if (!response.ok)
+      throw new Error(data.message || "Email OTP validation failed");
+    return {
+      status: true,
+      data: {
+        message: data.data.message,
+        passwordToken: data.data.passwordToken,
+        expiresInMinutes: data.data.expiresInMinutes,
+      },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Email OTP validation failed:", error);
+    return { status: false, error: (error as Error).message };
+  }
+}
+
 export async function changePassword(
   accessToken: string,
   currentPassword: string,
@@ -729,9 +801,9 @@ export async function changePassword(
       method: "POST",
       headers,
       body: JSON.stringify({
-        currentPassword,
-        newPassword,
-        confirmNewPassword,
+        currentPassword: encryptAES(currentPassword),
+        newPassword: encryptAES(newPassword),
+        confirmNewPassword: encryptAES(confirmNewPassword),
       }),
     });
 

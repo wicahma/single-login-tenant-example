@@ -160,7 +160,12 @@ export interface PasswordResetRequest {
   reNewPassword: string;
 }
 
-export type ResetProvider = "email" | "sms";
+export type ResetProvider = "email" | "sms" | "email-otp";
+export interface ValidateEmailOtpResponse {
+  message: string;
+  passwordToken: string;
+  expiresInMinutes: number;
+}
 
 // ─── Public API: /public/me/profile, /public/me/works, /public/me/uam ───────
 

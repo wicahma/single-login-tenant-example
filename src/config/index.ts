@@ -21,6 +21,12 @@ export const manualAuthConfig = {
   usernameSource: process.env.NEXT_PUBLIC_USERNAME_SOURCE || "",
 };
 
+export const encryptionConfig = {
+  secretKey:
+    process.env.NEXT_PUBLIC_ENCRYPTION_SECRET_KEY || "default_secret_key",
+  saltKey: process.env.NEXT_PUBLIC_ENCRYPTION_SALT_KEY || "default_salt_key",
+};
+
 export const storageKeys = {
   accessToken: "sso_access_token",
   refreshToken: "sso_refresh_token",
