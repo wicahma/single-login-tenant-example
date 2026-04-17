@@ -796,6 +796,12 @@ export async function changePassword(
     if (![null, undefined, "", 0].includes(passwordType)) {
       headers["x-password-type"] = String(passwordType);
     }
+    console.log("[ClientAPI] Changing password with headers:", headers);
+    console.log("[ClientAPI] Changing password with body:", {
+      currentPassword,
+      newPassword,
+      confirmNewPassword,
+    });
 
     const response = await fetch("/api/auth/change-password", {
       method: "POST",

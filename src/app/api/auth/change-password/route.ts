@@ -30,17 +30,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate password match
-    if (newPassword !== confirmNewPassword) {
-      return NextResponse.json(
-        {
-          error: "invalid_request",
-          message: "New password and confirm password do not match",
-        },
-        { status: 400 },
-      );
-    }
-
     const url = `${manualAuthConfig.ssoServerUrl}/public/me/change-password`;
 
     const requestBody = {

@@ -30,10 +30,9 @@ export default function ManualLoginPage() {
     setError(null);
 
     try {
-      const usernameSource: EUsernameSource =
-        (manualAuthConfig.usernameSource || "Npk") as EUsernameSource;
+      const usernameSource: EUsernameSource = "Npk" as EUsernameSource;
       const passwordSource: EPasswordSource | null = null;
-      const responseType: TResponseType = "pre-token";
+      const responseType: TResponseType = "default";
       console.log(
         `Submitting login with username: ${username}, password: ${password}, usernameSource: ${usernameSource}, passwordSource: ${passwordSource}, responseType: ${responseType}`,
       );

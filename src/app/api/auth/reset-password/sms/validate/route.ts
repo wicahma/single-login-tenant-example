@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify(body),
       },
     );
+    console.log(
+      "OTP validation response data:",
+      JSON.stringify(await response.clone().json()),
+    );
 
     if (!response.ok) {
       const errorText = await response.text();

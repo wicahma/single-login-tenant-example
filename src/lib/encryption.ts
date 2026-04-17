@@ -1,6 +1,9 @@
 import { encryptionConfig } from "@/config";
 import CryptoJS from "crypto-js";
 
+// # will be the api_key in SECRET_KEY=your-encryption-secret-key-here
+// # will be the key_id in SALT_KEY=your-encryption-salt-key-here
+
 const saltHex = Buffer.from(encryptionConfig.saltKey, "utf8").toString("hex");
 const salt = CryptoJS.enc.Hex.parse(saltHex);
 
