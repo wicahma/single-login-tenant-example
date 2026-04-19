@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
       headers["x-username-source"] = manualAuthConfig.usernameSource;
     }
 
+    console.log("Request Headers:", headers);
+
     const response = await fetch(url, {
       method: "GET",
       headers,

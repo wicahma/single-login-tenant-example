@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
       Authorization: authorization,
     };
 
+    console.log("Request Headers:", headers);
+
     if (manualAuthConfig.usernameSource) {
       headers["x-username-source"] = manualAuthConfig.usernameSource;
     }

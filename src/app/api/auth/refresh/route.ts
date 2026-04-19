@@ -28,6 +28,9 @@ export async function POST(request: NextRequest) {
       "X-Nonce": nonce,
     };
 
+    console.log("Request Body:", body);
+    console.log("Request Headers:", headers);
+
     const response = await fetch(
       `${manualAuthConfig.ssoServerUrl}/public/me/refresh-token`,
       {

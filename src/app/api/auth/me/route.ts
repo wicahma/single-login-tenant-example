@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
       "x-username-source": usernameSource,
     };
 
+    console.log("Request Headers:", headers);
+
     const response = await fetch(`${manualAuthConfig.ssoServerUrl}/public/me`, {
       method: "GET",
       headers,

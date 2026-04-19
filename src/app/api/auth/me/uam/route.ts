@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
       "x-app-secret": manualAuthConfig.apiKey,
     };
 
+    console.log("Request Headers:", headers);
+
     if (manualAuthConfig.usernameSource) {
       headers["x-username-source"] = manualAuthConfig.usernameSource;
     }

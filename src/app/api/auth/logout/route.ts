@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
       Authorization: authorization,
     };
 
+    console.log("Request Headers:", headers);
+
     const response = await fetch(
       `${manualAuthConfig.ssoServerUrl}/public/logout`,
       {

@@ -83,6 +83,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("Request Body:", body);
+    console.log("Request Headers:", headers);
+
     const data = await response.json();
     return NextResponse.json({
       status: true,
