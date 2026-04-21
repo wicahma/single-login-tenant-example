@@ -23,8 +23,13 @@ export const manualAuthConfig = {
 
 export const encryptionConfig = {
   secretKey:
-    process.env.NEXT_PUBLIC_ENCRYPTION_SECRET_KEY || "default_secret_key",
-  saltKey: process.env.NEXT_PUBLIC_ENCRYPTION_SALT_KEY || "default_salt_key",
+    process.env.API_KEY ||
+    process.env.NEXT_PUBLIC_ENCRYPTION_SECRET_KEY ||
+    "default_secret_key",
+  saltKey:
+    process.env.KEY_ID ||
+    process.env.NEXT_PUBLIC_ENCRYPTION_SALT_KEY ||
+    "default_salt_key",
 };
 
 export const storageKeys = {

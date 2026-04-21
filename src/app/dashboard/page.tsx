@@ -854,6 +854,7 @@ export default function DashboardPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium text-gray-900">
+                                {work.workId} {work.position.id}{" "}
                                 {work.position.name}
                               </span>
                               {isAolOnly && (
@@ -872,12 +873,12 @@ export default function DashboardPage() {
                               </span>
                             </div>
                             <p className="text-sm text-gray-500 mt-1">
-                              {work.branch.name}
+                              {work.branch.id} {work.branch.name}
                               {work.company.name
-                                ? ` · ${work.company.name}`
+                                ? ` · ${work.company.id} ${work.company.name}`
                                 : ""}
                               {work.department.name
-                                ? ` · ${work.department.name}`
+                                ? ` · ${work.department.id} ${work.department.name}`
                                 : ""}
                             </p>
                             {work.group && (

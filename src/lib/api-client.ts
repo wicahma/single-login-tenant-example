@@ -80,11 +80,11 @@ export async function login(
   });
 }
 
-export async function refreshToken(refreshToken: string) {
+export async function refreshToken(refreshToken: string, workId?: string) {
   return makeApiRequest({
     endpoint: "/api/public/me/refresh-token",
     method: "POST",
-    body: { refreshToken },
+    body: workId ? { refreshToken, workId } : { refreshToken },
   });
 }
 

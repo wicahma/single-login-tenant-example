@@ -680,15 +680,6 @@ export async function getUserUam(
 ): Promise<ApiResponse<UserUamWorkInfo[] | UserUamWorkInfo>> {
   try {
     let url = "/api/auth/me/uam";
-    if (workId != null && uamAolId === null) {
-      url += `?workId=${workId}`;
-    }
-    if (uamAolId != null && workId === null) {
-      url += `?uamAolId=${uamAolId}`;
-    }
-    if (workId != null && uamAolId != null) {
-      url += `?workId=${workId}&uamAolId=${uamAolId}`;
-    }
 
     const response = await fetch(url, {
       method: "GET",
