@@ -32,7 +32,7 @@ export default function ManualLoginPage() {
     try {
       const usernameSource: EUsernameSource = "Npk" as EUsernameSource;
       const passwordSource: EPasswordSource | null = null;
-      const responseType: TResponseType = "default";
+      const responseType: TResponseType = "pre-token";
       console.log(
         `Submitting login with username: ${username}, password: ${password}, usernameSource: ${usernameSource}, passwordSource: ${passwordSource}, responseType: ${responseType}`,
       );

@@ -51,6 +51,16 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    if (!data.status) {
+      return NextResponse.json(
+        {
+          error: "password_reset_failed",
+          message: data.error || "Unknown error",
+        },
+        { status: 400 },
+      );
+    }
+    console.log("Password reset response:", data);
     return NextResponse.json(data);
   } catch (error) {
     console.error("Password reset error:", (error as Error).message);

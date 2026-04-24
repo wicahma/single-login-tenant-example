@@ -7,11 +7,13 @@ import { Header } from "@/components/organisms";
 export default function ResetPasswordPage() {
   const router = useRouter();
 
-  const handleMethodSelect = (method: "email" | "sms") => {
+  const handleMethodSelect = (method: "email" | "sms" | "email-otp") => {
     if (method === "email") {
       router.push("/reset-password/email");
-    } else {
+    } else if (method === "sms") {
       router.push("/reset-password/sms");
+    } else {
+      router.push("/reset-password/email-otp");
     }
   };
 
@@ -76,6 +78,35 @@ export default function ResetPasswordPage() {
                     <h3 className="font-semibold text-lg">Reset via SMS</h3>
                     <p className="text-sm text-gray-600">
                       Receive an OTP code via SMS
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleMethodSelect("email-otp")}
+                className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+              >
+                <div className="flex items-center">
+                  <svg
+                    className="w-8 h-8 text-blue-600 mr-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                    />
+                  </svg>
+                  <div>
+                    <h3 className="font-semibold text-lg">
+                      Reset via Email OTP
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Receive an OTP code via email
                     </p>
                   </div>
                 </div>

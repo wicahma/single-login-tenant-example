@@ -12,6 +12,7 @@ import {
   PasswordResetSmsResponse,
   ValidateSmsOtpResponse,
   ValidateEmailOtpResponse,
+  PasswordResetEmailOtpResponse,
   ResetProvider,
   UserProfileData,
   UserWorkInfo,
@@ -712,7 +713,7 @@ export async function getUserUam(
 
 export async function sendPasswordResetEmailOtp(
   email: string,
-): Promise<ApiResponse<{ message: string; expiresInMinutes: number }>> {
+): Promise<ApiResponse<PasswordResetEmailOtpResponse>> {
   try {
     const response = await fetch("/api/auth/reset-password/email-otp", {
       method: "POST",
@@ -761,7 +762,7 @@ export async function validateEmailOtp(
       data: {
         message: data.data.message,
         passwordToken: data.data.passwordToken,
-        expiresInMinutes: data.data.expiresInMinutes,
+        tokenExpiresInMinutes: data.data.tokenExpiresInMinutes,
       },
     };
   } catch (error) {
