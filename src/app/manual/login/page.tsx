@@ -32,7 +32,7 @@ export default function ManualLoginPage() {
     try {
       const usernameSource: EUsernameSource = "Npk" as EUsernameSource;
       const passwordSource: EPasswordSource | null = null;
-      const responseType: TResponseType = "pre-token";
+      const responseType: TResponseType = "default";
       console.log(
         `Submitting login with username: ${username}, password: ${password}, usernameSource: ${usernameSource}, passwordSource: ${passwordSource}, responseType: ${responseType}`,
       );
@@ -82,8 +82,8 @@ export default function ManualLoginPage() {
             </p>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
+                <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
               </div>
             )}
 

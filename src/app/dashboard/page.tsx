@@ -437,8 +437,8 @@ export default function DashboardPage() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
+              <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
             </div>
           )}
 
@@ -820,7 +820,7 @@ export default function DashboardPage() {
               )}
               {!isLoadingWorks && worksError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-                  {worksError}
+                  <pre>{JSON.stringify(JSON.parse(worksError), null, 2)}</pre>
                 </div>
               )}
               {!isLoadingWorks && !worksError && userWorks.length === 0 && (
@@ -917,7 +917,7 @@ export default function DashboardPage() {
                 )}
                 {!isLoadingUam && uamError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-                    {uamError}
+                    <pre>{JSON.stringify(JSON.parse(uamError), null, 2)}</pre>
                   </div>
                 )}
                 {!isLoadingUam && !uamError && workUam && (

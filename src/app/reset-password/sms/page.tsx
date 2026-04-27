@@ -204,8 +204,8 @@ export default function SmsResetPage() {
             )}
 
             {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                {error}
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
+                <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
               </div>
             )}
 
