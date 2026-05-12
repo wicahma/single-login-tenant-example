@@ -13,6 +13,7 @@ import {
   getUserProfile,
   getUserWorks,
   getUserUam,
+  refreshAccessToken,
 } from "@/lib/client-api";
 import { storageKeys } from "@/config";
 import type {
@@ -140,22 +141,40 @@ export default function DashboardPage() {
     workId: number | null,
     uamAolId: number | null,
   ) => {
-    const accessToken = localStorage.getItem(storageKeys.accessToken);
-    if (!accessToken) return;
+    const currentRefreshToken = localStorage.getItem(storageKeys.refreshToken);
+    if (!currentRefreshToken) return;
 
-    if (workId) {
-      setSelectedWorkId(workId);
-    } else {
-      setSelectedWorkId(uamAolId);
-    }
+    setSelectedWorkId(workId ?? uamAolId);
     setWorkUam(null);
     setUamError(null);
     setIsLoadingUam(true);
 
     try {
-      const result = await getUserUam(accessToken, workId, uamAolId);
+      const refreshResult = await refreshAccessToken(
+        currentRefreshToken,
+        workId,
+      );
+      if (!refreshResult.status || !refreshResult.data) {
+        setUamError(
+          refreshResult.error || "Failed to refresh token for work selection",
+        );
+        return;
+      }
+
+      const newTokens = refreshResult.data;
+      localStorage.setItem(storageKeys.accessToken, newTokens.accessToken);
+      localStorage.setItem(storageKeys.refreshToken, newTokens.refreshToken);
+
+      console.log(
+        "[handleSelectWork] Token refreshed for workId",
+        workId,
+        "uamAolId",
+        uamAolId,
+      );
+
+      // 2. Use new access token to fetch UAM
+      const result = await getUserUam(newTokens.accessToken);
       if (result.status && result.data) {
-        // Single object when workId is provided
         console.log(
           "UAM API result for workId",
           workId,
@@ -928,10 +947,10 @@ export default function DashboardPage() {
                         [
                           ["Position", workUam.position?.name || "-"],
                           ["Branch", workUam.branch?.name || "-"],
-                          ["Department", workUam.department?.name || "—"],
-                          ["Company", workUam.company?.name || "—"],
-                          ["Group", workUam.group?.groupName ?? "—"],
+                          ["Department", workUam.department?.name || "-"],
+                          ["Company", workUam.company?.name || "-"],
                           ["Expires At", workUam.expiredAt ?? "Never"],
+                          ["Is Active", workUam.isActive ? "Yes" : "No"],
                         ] as [string, string][]
                       ).map(([label, value]) => (
                         <div key={label} className="bg-slate-50 rounded p-3">
@@ -959,10 +978,11 @@ export default function DashboardPage() {
                                 <tr>
                                   {[
                                     "Menu",
-                                    "View",
                                     "Create",
-                                    "Edit",
                                     "Delete",
+                                    "Download",
+                                    "Update",
+                                    "View",
                                   ].map((h) => (
                                     <th
                                       key={h}
@@ -984,10 +1004,11 @@ export default function DashboardPage() {
                                     </td>
                                     {(
                                       [
-                                        ["view", menu.isView],
                                         ["create", menu.isCreate],
-                                        ["edit", menu.isEdit],
                                         ["delete", menu.isDelete],
+                                        ["download", menu.isDownload],
+                                        ["update", menu.isUpdate],
+                                        ["view", menu.isView],
                                       ] as [string, boolean][]
                                     ).map(([permKey, perm]) => (
                                       <td key={permKey} className="px-3 py-2">
@@ -1059,22 +1080,14 @@ export default function DashboardPage() {
                             [
                               ["AOL ID", workUam.aolDetail.idUser],
                               ["Name", workUam.aolDetail.nameUser],
-                              ["Group", workUam.aolDetail.groupUser ?? "—"],
-                              ["NPK", workUam.aolDetail.npk ?? "—"],
-                              ["Email", workUam.aolDetail.email ?? "—"],
-                              ["Phone", workUam.aolDetail.phoneNumber ?? "—"],
-                              ["Status", workUam.aolDetail.status ?? "—"],
+                              ["Group", workUam.aolDetail.groupUser ?? "-"],
+                              ["NPK", workUam.aolDetail.npk ?? "-"],
+                              ["Email", workUam.aolDetail.email ?? "-"],
+                              ["Phone", workUam.aolDetail.phoneNumber ?? "-"],
+                              ["Code SP", workUam.aolDetail.codeSp ?? "-"],
                               [
                                 "Active Flag",
-                                workUam.aolDetail.flagActive ?? "—",
-                              ],
-                              [
-                                "Last Login",
-                                workUam.aolDetail.dateLastLogin ?? "—",
-                              ],
-                              [
-                                "Lock Password",
-                                workUam.aolDetail.flagLockPassword ?? "—",
+                                workUam.aolDetail.flagActive ?? "-",
                               ],
                             ] as [string, string][]
                           ).map(([label, value]) => (

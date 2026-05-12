@@ -244,8 +244,10 @@ export interface MenuPermissionResponse {
   menuName: string;
   isView: boolean;
   isCreate: boolean;
+  isUpdate: boolean;
   isEdit: boolean;
   isDelete: boolean;
+  isDownload: boolean;
 }
 
 export interface UamInfo {
@@ -256,20 +258,14 @@ export interface UamInfo {
 }
 
 export interface AolUserDetailInfo {
+  codeSp: string;
+  email: string;
+  flagActive: string;
+  groupUser: string;
   idUser: string;
   nameUser: string;
-  groupUser: string | null;
-  flagActive: string | null;
-  npk: string | null;
-  email: string | null;
-  phoneNumber: string | null;
-  userLevel: string | null;
-  status: string | null;
-  flagLockPassword: string | null;
-  countFaultLogin: number | null;
-  dateLastLogin: string | null;
-  flagChangePassword: string | null;
-  [key: string]: unknown;
+  npk: string;
+  phoneNumber: string;
 }
 
 export interface UserUamWorkInfo {

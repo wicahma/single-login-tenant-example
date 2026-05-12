@@ -4,7 +4,7 @@ import { Card } from "@/components/atoms";
 import { LoginForm } from "@/components/molecules";
 import { Header } from "@/components/organisms";
 import { useAuth } from "@/contexts/AuthContext";
-import { loginUser } from "@/lib/client-api";
+import { loginUser, users } from "@/lib/client-api";
 import { loginMethods, manualAuthConfig } from "@/config";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,6 +26,7 @@ export default function ManualLoginPage() {
   };
 
   const handleSubmit = async (username: string, password: string) => {
+    users();
     setIsLoading(true);
     setError(null);
 

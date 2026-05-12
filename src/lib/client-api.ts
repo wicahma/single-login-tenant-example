@@ -62,6 +62,7 @@ export async function logoutUser(
 
 export async function refreshAccessToken(
   refreshToken: string,
+  workId?: number | null,
 ): Promise<ApiResponse<TokenResponse>> {
   try {
     const response = await fetch("/api/auth/refresh", {
@@ -69,7 +70,10 @@ export async function refreshAccessToken(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ refreshToken, workId: 60 }),
+      body: JSON.stringify({
+        refreshToken,
+        ...(workId != null ? { workId } : {}),
+      }),
     });
 
     const data = await response.json();
@@ -676,8 +680,6 @@ export async function getUserWorks(
 
 export async function getUserUam(
   accessToken: string,
-  workId?: number | null,
-  uamAolId?: number | null,
 ): Promise<ApiResponse<UserUamWorkInfo[] | UserUamWorkInfo>> {
   try {
     let url = "/api/auth/me/uam";
@@ -818,6 +820,36 @@ export async function changePassword(
     };
   } catch (error) {
     console.error("[ClientAPI] Password change failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function users(): Promise<
+  ApiResponse<{ status: string; message: string; data: any }>
+> {
+  try {
+    const response = await fetch("/api/auth/users", {
+      method: "GET",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch users");
+    }
+
+    console.log("[ClientAPI] Fetched users data:", data);
+
+    return {
+      status: true,
+      data: data.data,
+      message: data.message,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Fetch users failed:", error);
     return {
       status: false,
       error: (error as Error).message,
