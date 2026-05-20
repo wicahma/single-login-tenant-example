@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, Button, LoadingSpinner } from "@/components/atoms";
-import { UserProfile } from "@/components/molecules";
+import { UserProfile, ReConsentBanner } from "@/components/molecules";
 import { Header } from "@/components/organisms";
 import {
   validateToken,
@@ -417,6 +417,7 @@ export default function DashboardPage() {
     <>
       <Header isAuthenticated={isAuthenticated} onLogout={handleLogout} />
       <main className="container mx-auto px-4 py-8">
+        <ReConsentBanner />
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <div>

@@ -28,6 +28,12 @@ export const Header: FC<HeaderProps> = ({ isAuthenticated, onLogout }) => {
               >
                 Dashboard
               </Link>
+              <Link
+                href="/microsoft-test"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                MS Test
+              </Link>
               <Button variant="secondary" onClick={onLogout}>
                 Logout
               </Button>

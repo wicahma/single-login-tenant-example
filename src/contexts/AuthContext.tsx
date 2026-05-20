@@ -17,6 +17,7 @@ import {
   refreshAccessToken as refreshTokenApi,
   getUserDetails as getUserDetailsApi,
   revokeOAuthToken,
+  refreshMicrosoftToken as refreshMicrosoftTokenApi,
 } from "@/lib/client-api";
 
 interface AuthContextType {
@@ -29,6 +30,10 @@ interface AuthContextType {
   updateTokens: (tokens: TokenResponse) => void;
   refreshToken: () => Promise<boolean>;
   fetchUserDetails: () => Promise<UserInfo | null>;
+  // Microsoft session
+  isMicrosoftSessionAvailable: boolean;
+  showMSBanner: boolean;
+  dismissMSBanner: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +44,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod | null>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Microsoft session state
+  const [isMicrosoftSessionAvailable, setIsMicrosoftSessionAvailable] =
+    useState(false);
+  const [showMSBanner, setShowMSBanner] = useState(false);
+  const msRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const setupAutoRefresh = useCallback((expiresIn: number) => {
     // Clear existing timer
@@ -64,6 +74,96 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         await logout();
       }
     }, refreshTime);
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // Microsoft session helpers
+  // -------------------------------------------------------------------------
+
+  const handleMSRefreshError = useCallback(
+    (err: Error & { httpStatus?: number }) => {
+      setIsMicrosoftSessionAvailable(false);
+      localStorage.setItem(storageKeys.msSessionAvailable, "false");
+
+      const msg = err.message?.toLowerCase() ?? "";
+      const status = err.httpStatus ?? 0;
+
+      if (status === 404 || (status === 401 && msg.includes("microsoft"))) {
+        // MS refresh token gone or revoked — prompt re-consent
+        if (!sessionStorage.getItem("ms_banner_shown")) {
+          sessionStorage.setItem("ms_banner_shown", "true");
+          setShowMSBanner(true);
+        }
+      } else if (status === 401) {
+        // IAM access token expired — force full re-login without referencing
+        // `logout` (which is declared later). Clear storage and redirect.
+        [
+          storageKeys.accessToken,
+          storageKeys.refreshToken,
+          storageKeys.userData,
+          storageKeys.tokenExpiry,
+          storageKeys.loginMethod,
+          storageKeys.microsoftAccessToken,
+          storageKeys.microsoftExpiresAt,
+          storageKeys.msSessionAvailable,
+        ].forEach((k) => localStorage.removeItem(k));
+        sessionStorage.removeItem("ms_banner_shown");
+        window.location.href = "/";
+      }
+      // 500 / network errors: log silently, do not show banner
+      console.error("[AuthContext] MS token refresh error:", err.message);
+    },
+    [],
+  );
+
+  const setupMSAutoRefresh = useCallback(
+    (expiresInSeconds: number) => {
+      if (msRefreshTimerRef.current) {
+        clearTimeout(msRefreshTimerRef.current);
+      }
+
+      const BUFFER = 300; // refresh 5 minutes before expiry
+      const delayMs = Math.max(0, (expiresInSeconds - BUFFER) * 1000);
+
+      console.log(
+        "[AuthContext] MS auto-refresh scheduled in",
+        delayMs / 1000,
+        "seconds",
+      );
+
+      msRefreshTimerRef.current = setTimeout(async () => {
+        const iamToken = localStorage.getItem(storageKeys.accessToken);
+        if (!iamToken) return;
+
+        console.log("[AuthContext] Silently refreshing Microsoft token...");
+        const result = await refreshMicrosoftTokenApi(iamToken);
+
+        if (result.status && result.data) {
+          localStorage.setItem(
+            storageKeys.microsoftAccessToken,
+            result.data.access_token,
+          );
+          localStorage.setItem(
+            storageKeys.microsoftExpiresAt,
+            (Date.now() + result.data.expires_in * 1000).toString(),
+          );
+          setIsMicrosoftSessionAvailable(true);
+          setupMSAutoRefresh(result.data.expires_in);
+          console.log("[AuthContext] Microsoft token refreshed successfully");
+        } else {
+          const err = Object.assign(
+            new Error(result.error ?? "Microsoft token refresh failed"),
+            { httpStatus: 0 },
+          );
+          handleMSRefreshError(err);
+        }
+      }, delayMs);
+    },
+    [handleMSRefreshError],
+  );
+
+  const dismissMSBanner = useCallback(() => {
+    setShowMSBanner(false);
   }, []);
 
   const isTokenExpiringSoon = useCallback((): boolean => {
@@ -108,13 +208,36 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       }
     }
 
-    // Cleanup timer on unmount
-    return () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
+    // Hydrate Microsoft session
+    const msAvailable =
+      localStorage.getItem(storageKeys.msSessionAvailable) === "true";
+    const msToken = localStorage.getItem(storageKeys.microsoftAccessToken);
+    const msExpiresAt = localStorage.getItem(storageKeys.microsoftExpiresAt);
+
+    if (msAvailable && msToken && msExpiresAt) {
+      const msRemainingSeconds = Math.floor(
+        (parseInt(msExpiresAt, 10) - Date.now()) / 1000,
+      );
+      if (msRemainingSeconds > 0) {
+        setIsMicrosoftSessionAvailable(true);
+        setupMSAutoRefresh(msRemainingSeconds);
+      } else {
+        // Expired on reload — mark unavailable, let next manual refresh handle it
+        localStorage.setItem(storageKeys.msSessionAvailable, "false");
       }
+    }
+
+    // Show banner if it was already triggered this session
+    if (sessionStorage.getItem("ms_banner_shown")) {
+      setShowMSBanner(true);
+    }
+
+    // Cleanup timers on unmount
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      if (msRefreshTimerRef.current) clearTimeout(msRefreshTimerRef.current);
     };
-  }, [setupAutoRefresh]);
+  }, [setupAutoRefresh, setupMSAutoRefresh]);
 
   const login = useCallback(
     (tokens: TokenResponse, userData: UserInfo, method: LoginMethod) => {
@@ -131,8 +254,33 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       setLoginMethod(method);
       setIsAuthenticated(true);
 
-      // Setup auto-refresh
+      // Setup IAM auto-refresh
       setupAutoRefresh(tokens.expiresIn);
+
+      // Store Microsoft session (may be absent for non-MS tenants)
+      if (tokens.microsoftAccessToken) {
+        localStorage.setItem(
+          storageKeys.microsoftAccessToken,
+          tokens.microsoftAccessToken,
+        );
+        localStorage.setItem(
+          storageKeys.microsoftExpiresAt,
+          (Date.now() + (tokens.microsoftExpiresIn ?? 0) * 1000).toString(),
+        );
+        localStorage.setItem(storageKeys.msSessionAvailable, "true");
+        setIsMicrosoftSessionAvailable(true);
+        setupMSAutoRefresh(tokens.microsoftExpiresIn ?? 0);
+        console.log(
+          "[AuthContext] Microsoft session stored, expires in",
+          tokens.microsoftExpiresIn,
+          "seconds",
+        );
+      } else {
+        localStorage.setItem(storageKeys.microsoftAccessToken, "");
+        localStorage.setItem(storageKeys.microsoftExpiresAt, "0");
+        localStorage.setItem(storageKeys.msSessionAvailable, "false");
+        setIsMicrosoftSessionAvailable(false);
+      }
 
       console.log(
         "[AuthContext] Session stored, expires in",
@@ -140,14 +288,19 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         "seconds",
       );
     },
-    [setupAutoRefresh],
+    [setupAutoRefresh, setupMSAutoRefresh],
   );
 
   const logout = useCallback(async () => {
-    // Clear refresh timer
+    // Clear IAM refresh timer
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = null;
+    }
+    // Clear Microsoft refresh timer
+    if (msRefreshTimerRef.current) {
+      clearTimeout(msRefreshTimerRef.current);
+      msRefreshTimerRef.current = null;
     }
 
     const storedMethod = localStorage.getItem(
@@ -173,17 +326,25 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       }
     }
 
-    // Clear all stored data
+    // Clear all IAM stored data
     localStorage.removeItem(storageKeys.accessToken);
     localStorage.removeItem(storageKeys.refreshToken);
     localStorage.removeItem(storageKeys.userData);
     localStorage.removeItem(storageKeys.tokenExpiry);
     localStorage.removeItem(storageKeys.loginMethod);
 
+    // Clear Microsoft stored data
+    localStorage.removeItem(storageKeys.microsoftAccessToken);
+    localStorage.removeItem(storageKeys.microsoftExpiresAt);
+    localStorage.removeItem(storageKeys.msSessionAvailable);
+    sessionStorage.removeItem("ms_banner_shown");
+
     setAccessToken(null);
     setUser(null);
     setLoginMethod(null);
     setIsAuthenticated(false);
+    setIsMicrosoftSessionAvailable(false);
+    setShowMSBanner(false);
 
     console.log("[AuthContext] Session cleared");
   }, [accessToken]);
@@ -286,6 +447,10 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       updateTokens,
       refreshToken,
       fetchUserDetails,
+      // Microsoft session
+      isMicrosoftSessionAvailable,
+      showMSBanner,
+      dismissMSBanner,
     }),
     [
       isAuthenticated,
@@ -297,6 +462,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       updateTokens,
       refreshToken,
       fetchUserDetails,
+      isMicrosoftSessionAvailable,
+      showMSBanner,
+      dismissMSBanner,
     ],
   );
 

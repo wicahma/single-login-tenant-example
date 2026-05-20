@@ -39,6 +39,10 @@ export const storageKeys = {
   userData: "sso_user_data",
   oauthSession: "oauth_session",
   loginMethod: "sso_login_method",
+  // Microsoft session
+  microsoftAccessToken: "microsoft_access_token",
+  microsoftExpiresAt: "microsoft_expires_at",
+  msSessionAvailable: "ms_session_available",
 };
 
 export type LoginMethod = "oauth" | "manual";

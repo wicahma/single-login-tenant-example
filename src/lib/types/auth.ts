@@ -20,6 +20,15 @@ export interface TokenResponse {
   idToken?: string;
   refreshToken: string;
   tokenType: string;
+  // Microsoft session (present only when the tenant has Microsoft SSO configured)
+  microsoftAccessToken?: string | null;
+  microsoftExpiresIn?: number;
+}
+
+export interface RefreshMicrosoftTokenData {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
 }
 
 export interface PreTokenLoginResponse {

@@ -1,10 +1,11 @@
 "use client";
 
-import { manualAuthConfig } from "@/config";
+import { manualAuthConfig, storageKeys } from "@/config";
 import {
   EPasswordSource,
   EUsernameSource,
   TokenResponse,
+  RefreshMicrosoftTokenData,
   TResponseType,
   UserInfo,
   TokenValidationResponse,
@@ -254,6 +255,8 @@ export async function loginUser(
         refreshToken: data.data.refreshToken,
         expiresIn: data.data.expiresIn,
         tokenType: data.data.tokenType || "Bearer",
+        microsoftAccessToken: data.data.microsoftAccessToken ?? null,
+        microsoftExpiresIn: data.data.microsoftExpiresIn ?? 0,
         ...userResponse.data,
       },
     };
@@ -855,4 +858,126 @@ export async function users(): Promise<
       error: (error as Error).message,
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Microsoft session helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when a valid, non-expired Microsoft access token is present.
+ * Use this as a feature gate before rendering Graph-dependent UI.
+ */
+export function isMicrosoftSessionAvailable(): boolean {
+  if (typeof window === "undefined") return false;
+  const available = localStorage.getItem(storageKeys.msSessionAvailable);
+  const token = localStorage.getItem(storageKeys.microsoftAccessToken);
+  const expiresAt = localStorage.getItem(storageKeys.microsoftExpiresAt);
+  return (
+    available === "true" &&
+    !!token &&
+    Date.now() < parseInt(expiresAt ?? "0", 10)
+  );
+}
+
+/**
+ * Calls the backend proxy to silently exchange the stored Microsoft refresh
+ * token for a fresh access token. Never calls Microsoft directly.
+ */
+export async function refreshMicrosoftToken(
+  iamAccessToken: string,
+): Promise<ApiResponse<RefreshMicrosoftTokenData>> {
+  try {
+    const response = await fetch("/api/auth/refresh-microsoft-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${iamAccessToken}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const err = new Error(data.message || "Microsoft token refresh failed");
+      (err as any).httpStatus = response.status;
+      throw err;
+    }
+
+    return {
+      status: true,
+      data: data.data,
+      message: data.message,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Microsoft token refresh failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+/**
+ * Wrapper for Microsoft Graph API calls.
+ * Reads the stored microsoft_access_token, attaches it, and handles:
+ *   - 401 → one silent refresh + retry
+ *   - 403 → scope missing (User.Read / Sites.Read.All not consented)
+ * Throws with message 'NO_MS_TOKEN', 'MS_TOKEN_REFRESH_FAILED', or
+ * 'MS_SCOPE_MISSING' so callers can react uniformly.
+ */
+export async function callGraphAPI<T = any>(
+  endpoint: string,
+  iamAccessToken: string,
+  options: RequestInit = {},
+  _retried = false,
+): Promise<T> {
+  const msToken = localStorage.getItem(storageKeys.microsoftAccessToken);
+
+  if (!msToken || !isMicrosoftSessionAvailable()) {
+    throw Object.assign(new Error("NO_MS_TOKEN"), { httpStatus: 0 });
+  }
+
+  const response = await fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
+    ...options,
+    headers: {
+      ...(options.headers as Record<string, string>),
+      Authorization: `Bearer ${msToken}`,
+    },
+  });
+
+  // Expired mid-session — attempt one silent refresh then retry
+  if (response.status === 401 && !_retried) {
+    const refreshResult = await refreshMicrosoftToken(iamAccessToken);
+
+    if (!refreshResult.status || !refreshResult.data) {
+      throw Object.assign(new Error("MS_TOKEN_REFRESH_FAILED"), {
+        httpStatus: 401,
+      });
+    }
+
+    localStorage.setItem(
+      storageKeys.microsoftAccessToken,
+      refreshResult.data.access_token,
+    );
+    localStorage.setItem(
+      storageKeys.microsoftExpiresAt,
+      (Date.now() + refreshResult.data.expires_in * 1000).toString(),
+    );
+
+    return callGraphAPI<T>(endpoint, iamAccessToken, options, true);
+  }
+
+  if (response.status === 403) {
+    throw Object.assign(new Error("MS_SCOPE_MISSING"), { httpStatus: 403 });
+  }
+
+  if (!response.ok) {
+    throw Object.assign(new Error(`Graph API error: ${response.status}`), {
+      httpStatus: response.status,
+    });
+  }
+
+  return response.json() as Promise<T>;
 }

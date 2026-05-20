@@ -53,11 +53,25 @@ export default function ManualLoginPage() {
         throw new Error(response.error || "Login failed");
       }
 
-      const { accessToken, refreshToken, expiresIn, tokenType, ...userInfo } =
-        response.data;
+      const {
+        accessToken,
+        refreshToken,
+        expiresIn,
+        tokenType,
+        microsoftAccessToken,
+        microsoftExpiresIn,
+        ...userInfo
+      } = response.data;
 
       login(
-        { accessToken, refreshToken, expiresIn, tokenType },
+        {
+          accessToken,
+          refreshToken,
+          expiresIn,
+          tokenType,
+          microsoftAccessToken,
+          microsoftExpiresIn,
+        },
         userInfo,
         loginMethods.manual,
       );
