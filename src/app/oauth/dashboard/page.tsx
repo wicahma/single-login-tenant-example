@@ -8,6 +8,7 @@ import { UserProfile } from "@/components/molecules";
 import { Header } from "@/components/organisms";
 import { refreshOAuthToken, getOAuthUserInfo } from "@/lib/client-api";
 import { storageKeys } from "@/config";
+import { tryParseJSON } from "@/lib/json";
 
 interface TokenData {
   accessToken: string;
@@ -181,7 +182,7 @@ export default function OAuthDashboardPage() {
 
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
-              <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
+              <pre>{tryParseJSON(error)}</pre>
             </div>
           )}
 

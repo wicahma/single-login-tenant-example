@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, Button, Input, LoadingSpinner } from "@/components/atoms";
 import { Header } from "@/components/organisms";
 import { sendPasswordResetEmail, resetPassword } from "@/lib/client-api";
+import { tryParseJSON } from "@/lib/json";
 
 export default function EmailResetPage() {
   const router = useRouter();
@@ -114,7 +115,7 @@ export default function EmailResetPage() {
 
                 {error && (
                   <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
-                    <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
+                    <pre>{tryParseJSON(error)}</pre>
                   </div>
                 )}
 
@@ -158,7 +159,7 @@ export default function EmailResetPage() {
 
                 {error && (
                   <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
-                    <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
+                    <pre>{tryParseJSON(error)}</pre>
                   </div>
                 )}
 

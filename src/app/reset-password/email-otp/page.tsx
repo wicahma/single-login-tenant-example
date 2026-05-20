@@ -9,6 +9,7 @@ import {
   validateEmailOtp,
   resetPassword,
 } from "@/lib/client-api";
+import { tryParseJSON } from "@/lib/json";
 
 type Step = "email" | "otp" | "password";
 
@@ -204,7 +205,7 @@ export default function EmailOtpResetPage() {
 
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
-                <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
+                <pre>{tryParseJSON(error)}</pre>
               </div>
             )}
 

@@ -13,6 +13,7 @@ import {
   EUsernameSource,
   TResponseType,
 } from "@/lib/types/auth";
+import { tryParseJSON } from "@/lib/json";
 
 export default function ManualLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -84,7 +85,7 @@ export default function ManualLoginPage() {
 
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
-                <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
+                <pre>{tryParseJSON(error)}</pre>
               </div>
             )}
 

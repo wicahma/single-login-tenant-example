@@ -21,6 +21,7 @@ import type {
   UserWorkInfo,
   UserUamWorkInfo,
 } from "@/lib/types/auth";
+import { tryParseJSON } from "@/lib/json";
 
 export default function DashboardPage() {
   const { isAuthenticated, user, logout, fetchUserDetails, refreshToken } =
@@ -457,7 +458,7 @@ export default function DashboardPage() {
 
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">
-              <pre>{JSON.stringify(JSON.parse(error), null, 2)}</pre>
+              <pre>{tryParseJSON(error)}</pre>
             </div>
           )}
 
@@ -839,7 +840,7 @@ export default function DashboardPage() {
               )}
               {!isLoadingWorks && worksError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-                  <pre>{JSON.stringify(JSON.parse(worksError), null, 2)}</pre>
+                  <pre>{tryParseJSON(worksError)}</pre>
                 </div>
               )}
               {!isLoadingWorks && !worksError && userWorks.length === 0 && (
@@ -936,7 +937,7 @@ export default function DashboardPage() {
                 )}
                 {!isLoadingUam && uamError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-                    <pre>{JSON.stringify(JSON.parse(uamError), null, 2)}</pre>
+                    <pre>{tryParseJSON(uamError)}</pre>
                   </div>
                 )}
                 {!isLoadingUam && !uamError && workUam && (
