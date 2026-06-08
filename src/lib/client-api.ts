@@ -18,8 +18,12 @@ import {
   UserProfileData,
   UserWorkInfo,
   UserUamWorkInfo,
+  PreTokenLoginResponse,
+  TenantLoginResponse,
 } from "@/lib/types/auth";
 import { encryptAES } from "@/lib/encryption";
+import { isMfaRequiredError, triggerMfaRecovery } from "@/lib/msal-recovery";
+import { IEnrollUserResponse } from "./types/mfa";
 
 export interface ApiResponse<T = any> {
   status: boolean;
@@ -27,6 +31,8 @@ export interface ApiResponse<T = any> {
   message?: string;
   error?: string;
   metadata?: Record<string, any>;
+  /** Set to true when the backend returned a mfa_required 401 */
+  mfaRequired?: boolean;
 }
 export async function logoutUser(
   accessToken: string,
@@ -138,6 +144,43 @@ export async function claimPreToken(
   }
 }
 
+export async function exchangePreTokenForSession(
+  preToken: string,
+): Promise<ApiResponse<TokenResponse & UserInfo>> {
+  try {
+    const preTokenResponse = await claimPreToken(preToken);
+
+    if (!preTokenResponse.status || !preTokenResponse.data) {
+      throw new Error("Failed to fetch user info after login");
+    }
+
+    const userResponse = await getUserDetails(
+      preTokenResponse.data.accessToken,
+    );
+
+    if (!userResponse.status || !userResponse.data) {
+      throw new Error("Failed to fetch user info after login");
+    }
+
+    return {
+      status: true,
+      data: {
+        accessToken: preTokenResponse.data.accessToken,
+        refreshToken: preTokenResponse.data.refreshToken,
+        expiresIn: preTokenResponse.data.expiresIn,
+        tokenType: preTokenResponse.data.tokenType || "Bearer",
+        ...userResponse.data,
+      },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Pre-token exchange failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
 export async function getUserDetails(
   accessToken: string,
 ): Promise<ApiResponse<UserInfo>> {
@@ -181,7 +224,7 @@ export async function loginUser(
   usernameSource: EUsernameSource = "Npk",
   passwordSource: EPasswordSource | null = null,
   responseType: TResponseType = "default",
-): Promise<ApiResponse<TokenResponse & UserInfo>> {
+): Promise<ApiResponse<any>> {
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -204,59 +247,105 @@ export async function loginUser(
       }),
     });
 
-    const data = await response.json();
+    let data: ApiResponse<PreTokenLoginResponse | TenantLoginResponse> =
+      await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || !data.status || !data.data) {
       throw new Error(data.message || "Login failed");
     }
 
     console.log("[ClientAPI] Login successful, fetching user info...", data);
 
     if (responseType === "pre-token") {
-      console.log("Pre token requested!", data);
-      const preTokenResponse = await claimPreToken(data.data.preToken);
+      const mfaEnrollment = (data.data as PreTokenLoginResponse).mfaEnrollment;
+      if (mfaEnrollment?.requiredToMFA) {
+        console.warn(
+          `[ClientAPI] MFA is required. Reason: ${mfaEnrollment.reason}`,
+        );
 
-      if (!preTokenResponse.status || !preTokenResponse.data) {
-        throw new Error("Failed to fetch user info after login");
+        localStorage.setItem(
+          "preToken",
+          (data.data as PreTokenLoginResponse).preToken,
+        );
+
+        return {
+          status: true,
+          data: {
+            ...(data.data as PreTokenLoginResponse),
+          },
+        };
+
+        // set pretoken in the client
+        // directly call the verify mfa or enroll then verify setup mfa based on the isenrolled
+        // if the flow is done, then continue to claim pretoken and fetch user info, otherwise return with mfa required error to trigger mfa flow in the login page
+
+        // return null as any;
       }
 
-      const userResponse = await getUserDetails(
-        preTokenResponse.data.accessToken,
+      console.log("Pre token requested!", data);
+      const preTokenSession = await exchangePreTokenForSession(
+        (data.data as PreTokenLoginResponse).preToken,
       );
 
-      if (!userResponse.status || !userResponse.data) {
-        throw new Error("Failed to fetch user info after login");
+      if (!preTokenSession.status || !preTokenSession.data) {
+        throw new Error(
+          preTokenSession.error || "Failed to fetch user info after login",
+        );
       }
 
-      console.log("Pre-token login response:", preTokenResponse);
+      console.log("Pre-token login response:", preTokenSession);
 
-      return {
-        status: true,
-        data: {
-          accessToken: preTokenResponse.data.accessToken,
-          refreshToken: preTokenResponse.data.refreshToken,
-          expiresIn: preTokenResponse.data.expiresIn,
-          tokenType: preTokenResponse.data.tokenType || "Bearer",
-          ...userResponse.data,
-        },
-      };
+      return preTokenSession;
     }
 
-    const userResponse = await getUserDetails(data.data.accessToken);
+    const userResponse = await getUserDetails(
+      (data.data as TenantLoginResponse).accessToken,
+    );
 
     if (!userResponse.status || !userResponse.data) {
       throw new Error("Failed to fetch user info after login");
     }
 
+    // // Handle Microsoft MFA requirement
+    // let microsoftMfaRequired = data.data.microsoftMfaRequired ?? false;
+    // let resolvedMsAccessToken: string | null =
+    //   data.data.microsoftAccessToken ?? null;
+    // let resolvedMsExpiresIn = data.data.microsoftExpiresIn ?? 0;
+
+    // if (microsoftMfaRequired) {
+    //   try {
+    //     const recoveredToken = await triggerMfaRecovery(data.data.accessToken);
+    //     // triggerMfaRecovery already persisted the token to localStorage;
+    //     // read back the expiry so AuthContext can set up the refresh timer.
+    //     const msExpiresAt = localStorage.getItem(
+    //       storageKeys.microsoftExpiresAt,
+    //     );
+    //     resolvedMsAccessToken = recoveredToken;
+    //     resolvedMsExpiresIn = msExpiresAt
+    //       ? Math.max(0, Math.floor((Number(msExpiresAt) - Date.now()) / 1000))
+    //       : 0;
+    //     microsoftMfaRequired = false; // recovery succeeded — no warning needed
+    //   } catch (err) {
+    //     // User dismissed the popup or popup was blocked.
+    //     // Log it — Graph-dependent features will degrade gracefully.
+    //     console.warn(
+    //       "[Microsoft] MFA recovery skipped or failed at login time.",
+    //       err,
+    //     );
+    //     // microsoftMfaRequired remains true so the login page can show a warning
+    //   }
+    // }
+
     return {
       status: true,
       data: {
-        accessToken: data.data.accessToken,
-        refreshToken: data.data.refreshToken,
-        expiresIn: data.data.expiresIn,
-        tokenType: data.data.tokenType || "Bearer",
-        microsoftAccessToken: data.data.microsoftAccessToken ?? null,
-        microsoftExpiresIn: data.data.microsoftExpiresIn ?? 0,
+        accessToken: (data.data as TenantLoginResponse).accessToken,
+        refreshToken: (data.data as TenantLoginResponse).refreshToken,
+        expiresIn: (data.data as TenantLoginResponse).expiresIn,
+        tokenType: (data.data as TenantLoginResponse).tokenType || "Bearer",
+        // microsoftAccessToken: resolvedMsAccessToken,
+        // microsoftExpiresIn: resolvedMsExpiresIn,
+        // microsoftMfaRequired,
         ...userResponse.data,
       },
     };
@@ -900,6 +989,14 @@ export async function refreshMicrosoftToken(
     const data = await response.json();
 
     if (!response.ok) {
+      // Detect the special mfa_required 401 shape — NOT wrapped in RBaseResponse
+      if (response.status === 401 && isMfaRequiredError(data)) {
+        return {
+          status: false,
+          mfaRequired: true,
+          error: data.message,
+        };
+      }
       const err = new Error(data.message || "Microsoft token refresh failed");
       (err as any).httpStatus = response.status;
       throw err;
@@ -951,6 +1048,24 @@ export async function callGraphAPI<T = any>(
   if (response.status === 401 && !_retried) {
     const refreshResult = await refreshMicrosoftToken(iamAccessToken);
 
+    if (refreshResult.mfaRequired) {
+      // Silent refresh hit an MFA requirement — launch MSAL interactive popup
+      let newAccessToken: string;
+      try {
+        newAccessToken = await triggerMfaRecovery(iamAccessToken);
+      } catch (recoveryError) {
+        // Recovery failed or user cancelled — surface as a distinct error
+        throw Object.assign(
+          new Error(
+            `MS_MFA_RECOVERY_FAILED: ${(recoveryError as Error).message}`,
+          ),
+          { httpStatus: 401, mfaRequired: true },
+        );
+      }
+      // Token stored in localStorage by triggerMfaRecovery; retry once
+      return callGraphAPI<T>(endpoint, iamAccessToken, options, true);
+    }
+
     if (!refreshResult.status || !refreshResult.data) {
       throw Object.assign(new Error("MS_TOKEN_REFRESH_FAILED"), {
         httpStatus: 401,
@@ -965,6 +1080,7 @@ export async function callGraphAPI<T = any>(
       storageKeys.microsoftExpiresAt,
       (Date.now() + refreshResult.data.expires_in * 1000).toString(),
     );
+    localStorage.setItem(storageKeys.msSessionAvailable, "true");
 
     return callGraphAPI<T>(endpoint, iamAccessToken, options, true);
   }
@@ -980,4 +1096,206 @@ export async function callGraphAPI<T = any>(
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function enrollMFA(
+  userIdentifier: string,
+  userName: string,
+): Promise<ApiResponse<IEnrollUserResponse>> {
+  try {
+    console.log(
+      "[ClientAPI] Starting MFA enrollment for user:",
+      userIdentifier,
+      userName,
+    );
+
+    const response = await fetch("/api/mfa/enroll", {
+      method: "POST",
+      body: JSON.stringify({
+        userIdentifier: userIdentifier,
+        userName: userName,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("[ClientAPI] Enroll MFA failed with response:", data);
+      throw new Error(data.message || "Enroll MFA failed");
+    }
+
+    console.log(
+      "[ClientAPI] Enroll MFA successful, fetching user info...",
+      data,
+    );
+
+    return {
+      status: true,
+      message: data.message,
+      data: data.data,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Enroll MFA failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function verifyMFA(
+  userIdentifier: string,
+  token: string,
+  preToken: string,
+  fingerprint?: string,
+  userAgent?: string,
+): Promise<ApiResponse<null>> {
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-fingerprint": fingerprint || "",
+      "x-pre-token": preToken,
+      "user-agent": userAgent || "",
+    };
+
+    console.log(
+      "[ClientAPI] Starting MFA verify for user:",
+      userIdentifier,
+      preToken,
+    );
+
+    console.log("[ClientAPI] Attempting verify MFA with headers:", headers);
+
+    const response = await fetch("/api/mfa/verify", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        userIdentifier: userIdentifier,
+        token: token,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Verify MFA failed");
+    }
+
+    console.log(
+      "[ClientAPI] Verify MFA successful, fetching user info...",
+      data,
+    );
+
+    return {
+      status: true,
+      message: data.message,
+      data: null,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Verify MFA failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function verifyRecoveryMFA(
+  userIdentifier: string,
+  recoveryCode: string,
+): Promise<ApiResponse<null>> {
+  try {
+    console.log(
+      "[ClientAPI] Starting MFA recovery verify for user:",
+      userIdentifier,
+      recoveryCode,
+    );
+
+    const response = await fetch("/api/mfa/verify-recovery", {
+      method: "POST",
+      // headers,
+      body: JSON.stringify({
+        userIdentifier: userIdentifier,
+        recoveryCode: recoveryCode,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Verify recovery MFA failed");
+    }
+
+    console.log(
+      "[ClientAPI] Verify recovery MFA successful, fetching user info...",
+      data,
+    );
+
+    return {
+      status: true,
+      message: data.message,
+      data: null,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Verify recovery MFA failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}
+
+export async function verifySetupMFA(
+  userIdentifier: string,
+  token: string,
+  fingerprint?: string,
+  preToken?: string,
+  userAgent?: string,
+): Promise<ApiResponse<null>> {
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-fingerprint": fingerprint || "",
+      "x-pre-token": preToken || "",
+      "user-agent": userAgent || "",
+    };
+
+    console.log(
+      "[ClientAPI] Starting MFA setup verify for user:",
+      userIdentifier,
+      token,
+    );
+
+    const response = await fetch("/api/mfa/verify-setup", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        userIdentifier: userIdentifier,
+        token: token,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Verify setup MFA failed");
+    }
+
+    console.log(
+      "[ClientAPI] Verify setup MFA successful, fetching user info...",
+      data,
+    );
+
+    return {
+      status: true,
+      message: data.message,
+      data: null,
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Verify setup MFA failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
 }

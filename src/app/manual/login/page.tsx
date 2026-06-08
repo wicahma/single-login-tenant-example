@@ -14,10 +14,12 @@ import {
   TResponseType,
 } from "@/lib/types/auth";
 import { tryParseJSON } from "@/lib/json";
+import { getMfaNextRoute, saveMfaSession } from "../../../lib/mfa-flow";
 
 export default function ManualLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [msWarning, setMsWarning] = useState(false);
   const { login, isAuthenticated, logout } = useAuth();
   const router = useRouter();
 
@@ -34,7 +36,7 @@ export default function ManualLoginPage() {
     try {
       const usernameSource: EUsernameSource = "Npk" as EUsernameSource;
       const passwordSource: EPasswordSource | null = null;
-      const responseType: TResponseType = "default";
+      const responseType: TResponseType = "pre-token";
       console.log(
         `Submitting login with username: ${username}, password: ${password}, usernameSource: ${usernameSource}, passwordSource: ${passwordSource}, responseType: ${responseType}`,
       );
@@ -53,6 +55,23 @@ export default function ManualLoginPage() {
         throw new Error(response.error || "Login failed");
       }
 
+      if (
+        "preToken" in response.data &&
+        "mfaEnrollment" in response.data &&
+        response.data.mfaEnrollment?.requiredToMFA
+      ) {
+        saveMfaSession({
+          identifier: username,
+          userName: username,
+          preToken: response.data.preToken,
+          expiresIn: response.data.expiresIn,
+          mfaEnrollment: response.data.mfaEnrollment,
+        });
+
+        router.push(getMfaNextRoute(response.data.mfaEnrollment.isEnrolledMFA));
+        return;
+      }
+
       const {
         accessToken,
         refreshToken,
@@ -60,6 +79,7 @@ export default function ManualLoginPage() {
         tokenType,
         microsoftAccessToken,
         microsoftExpiresIn,
+        microsoftMfaRequired,
         ...userInfo
       } = response.data;
 
@@ -75,6 +95,12 @@ export default function ManualLoginPage() {
         userInfo,
         loginMethods.manual,
       );
+
+      if (microsoftMfaRequired) {
+        // MFA recovery was triggered inside loginUser() but the user dismissed
+        // the popup — surface a soft warning before navigating.
+        setMsWarning(true);
+      }
 
       router.push("/dashboard");
     } catch (err) {
@@ -96,6 +122,13 @@ export default function ManualLoginPage() {
               Login using your username and password. Requests are signed with
               RSA-PSS.
             </p>
+
+            {msWarning && (
+              <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
+                Microsoft session could not be established. Some features may be
+                unavailable until you complete MFA verification.
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded overflow-auto">

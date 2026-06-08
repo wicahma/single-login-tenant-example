@@ -23,6 +23,8 @@ export interface TokenResponse {
   // Microsoft session (present only when the tenant has Microsoft SSO configured)
   microsoftAccessToken?: string | null;
   microsoftExpiresIn?: number;
+  /** True when Entra ID enforced MFA at login time and no MS token was issued via ROPC */
+  microsoftMfaRequired?: boolean;
 }
 
 export interface RefreshMicrosoftTokenData {
@@ -35,6 +37,24 @@ export interface PreTokenLoginResponse {
   preToken: string;
   expiresIn: number;
   message: string;
+  passwordExpiresAt: string;
+  mfaEnrollment: {
+    requiredToMFA: boolean;
+    isEnrolledMFA: boolean;
+    reason?: string;
+  };
+}
+
+export interface TenantLoginResponse {
+  email: string;
+  fullName: string;
+  phoneNumber: string;
+  npk: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
+  passwordExpiresAt?: Date;
 }
 
 export interface UserInfo {
@@ -275,6 +295,50 @@ export interface AolUserDetailInfo {
   nameUser: string;
   npk: string;
   phoneNumber: string;
+}
+
+// ─── MFA Recovery types ──────────────────────────────────────────────────────
+
+/** Standard backend envelope used for all success and most error responses */
+export interface RBaseResponse<T> {
+  status: boolean;
+  message: string;
+  data?: T;
+  errors?: unknown;
+  pagination?: RPaginatedResponse;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RPaginatedResponse {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+/**
+ * Shape returned ONLY when the backend hits an MFA challenge.
+ * This is NOT wrapped in RBaseResponse — it comes directly as the 401 body.
+ */
+export interface MfaRequiredError {
+  error: "mfa_required";
+  message: string;
+}
+
+/**
+ * Token data returned inside RBaseResponse from both
+ * /refresh-microsoft-token and /recover-microsoft-session.
+ */
+export interface MicrosoftTokenData {
+  accessToken: string;
+  expiresIn: number;
+  tokenType: string;
+}
+
+/** Request body for POST /api/auth/recover-microsoft-session */
+export interface RecoverMicrosoftSessionRequest {
+  authorizationCode: string;
+  redirectUri: string;
 }
 
 export interface UserUamWorkInfo {

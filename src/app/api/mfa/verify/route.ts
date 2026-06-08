@@ -5,7 +5,7 @@ import { signManualRequest } from "@/lib/crypto";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const url = `${manualAuthConfig.ssoServerUrl}/public/reset-password/sms`;
+    const url = `${manualAuthConfig.mfaServerUrl}/api/v1/mfa/verify`;
 
     const { timestamp, signature, nonce } = await signManualRequest(
       "POST",
@@ -25,10 +25,16 @@ export async function POST(request: NextRequest) {
       "X-Signature": signature,
       "X-Key-Id": manualAuthConfig.keyId,
       "X-Nonce": nonce,
+      "X-Fingerprint": request.headers.get("x-fingerprint") || "",
+      "X-Pre-Token": request.headers.get("x-pre-token") || "",
+      "User-Agent": request.headers.get("user-agent") || "",
     };
 
+    console.log("Request Body:", body);
+    console.log("Request Headers:", headers);
+
     const response = await fetch(
-      `${manualAuthConfig.ssoServerUrl}/public/reset-password/sms`,
+      `${manualAuthConfig.mfaServerUrl}/api/v1/mfa/verify`,
       {
         method: "POST",
         headers,
@@ -38,18 +44,17 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Reset password SMS failed:", errorText);
       return NextResponse.json(
-        { error: "sms_send_failed", message: errorText },
+        { error: "mfa_verify_failed", message: errorText },
         { status: response.status },
       );
     }
-    const data = await response.text();
-    console.log("Reset password SMS response:", data);
-    // const data = await response.json();
+
+    const data = await response.json();
+    console.log("MFA verify successful:", data);
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Reset password SMS error:", (error as Error).message);
+    console.log("MFA verify error:", (error as Error).message);
     return NextResponse.json(
       { error: "server_error", message: (error as Error).message },
       { status: 500 },
