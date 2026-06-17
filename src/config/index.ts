@@ -1,7 +1,9 @@
 export const ssoConfig = {
   ssoBaseUrl: process.env.SSO_BASE_URL || "http://localhost:4000",
-  ssoServerUrl: process.env.SSO_BACKEND_BASE_URL || "http://localhost:4001",
-  mfaServerUrl: process.env.MFA_BACKEND_BASE_URL || "http://localhost:4001",
+  ssoServerUrl:
+    process.env.SSO_BACKEND_BASE_URL || "https://sentra-dev-gateway.acc.co.id",
+  mfaServerUrl:
+    process.env.MFA_BACKEND_BASE_URL || "https://sentra-dev-gateway.acc.co.id",
   clientId: process.env.CLIENT_ID || "",
   clientSecret: process.env.CLIENT_SECRET || "",
   scopes: "openid profile email offline_access",

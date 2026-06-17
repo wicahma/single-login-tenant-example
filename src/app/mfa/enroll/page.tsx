@@ -8,6 +8,7 @@ import { enrollMFA } from "@/lib/client-api";
 import { tryParseJSON } from "@/lib/json";
 import { readMfaSession } from "../../../lib/mfa-flow";
 import { IEnrollUserResponse } from "@/lib/types/mfa";
+import { ssoConfig } from "@/config";
 
 const setupStorageKey = "mfa_enrollment_setup";
 
@@ -116,7 +117,7 @@ export default function MfaEnrollPage() {
                     1. Scan the QR code
                   </p>
                   <img
-                    src={enrollmentData.qrCodeDataUrl}
+                    src={`${ssoConfig.mfaServerUrl}${enrollmentData.qrCodeDataUrl}`}
                     alt="MFA QR code"
                     className="mx-auto w-56 h-56 rounded-lg bg-white p-3 shadow-sm"
                   />

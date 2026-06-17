@@ -13,7 +13,7 @@ import {
   readMfaSession,
 } from "../../../lib/mfa-flow";
 import { IEnrollUserResponse } from "@/lib/types/mfa";
-import { loginMethods } from "@/config";
+import { loginMethods, ssoConfig } from "@/config";
 
 const setupStorageKey = "mfa_enrollment_setup";
 
@@ -110,7 +110,7 @@ export default function MfaVerifySetupPage() {
             {setupData && (
               <div className="mb-6 grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-[220px_1fr]">
                 <img
-                  src={setupData.qrCodeDataUrl}
+                  src={`${ssoConfig.mfaServerUrl}${setupData.qrCodeDataUrl}`}
                   alt="MFA QR code"
                   className="mx-auto w-52 h-52 rounded-lg bg-white p-3 shadow-sm"
                 />
