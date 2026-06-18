@@ -52,6 +52,12 @@ export const Header: FC<HeaderProps> = ({ isAuthenticated, onLogout }) => {
               >
                 Manual Login
               </Link>
+              <Link
+                href="/microsoft/login"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Microsoft Login
+              </Link>
             </>
           )}
         </nav>

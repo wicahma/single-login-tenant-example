@@ -1299,3 +1299,76 @@ export async function verifySetupMFA(
     };
   }
 }
+
+/**
+ * loginWithMicrosoftToken
+ *
+ * Sends a Microsoft ID token (obtained via MSAL.js) to the backend's
+ * /public/login endpoint via the BFF proxy at /api/auth/microsoft-login.
+ *
+ * Unlike the password-based loginUser(), this function:
+ *   - Does NOT AES-encrypt the body
+ *   - Does NOT send x-username-source or x-pass-source headers
+ *   - Sends the raw Microsoft ID token
+ *
+ * The backend validates the token cryptographically, extracts the NPK from
+ * the given_name claim, looks up the user, performs UAM access checks, and
+ * returns the standard TenantLoginResponse.
+ */
+export async function loginWithMicrosoftToken(
+  idToken: string,
+  provider: string = "Microsoft",
+): Promise<ApiResponse<any>> {
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    console.log("[ClientAPI] Attempting Microsoft token login");
+
+    const response = await fetch("/api/auth/microsoft-login", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        microsoft_id_token: idToken,
+        provider,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.status || !data.data) {
+      throw new Error(data.message || "Microsoft login failed");
+    }
+
+    console.log(
+      "[ClientAPI] Microsoft login successful, fetching user info...",
+    );
+
+    // Fetch user details with the returned access token
+    const userResponse = await getUserDetails(data.data.accessToken);
+
+    if (!userResponse.status || !userResponse.data) {
+      throw new Error(
+        userResponse.error || "Failed to fetch user info after login",
+      );
+    }
+
+    return {
+      status: true,
+      data: {
+        accessToken: data.data.accessToken,
+        refreshToken: data.data.refreshToken,
+        expiresIn: data.data.expiresIn,
+        tokenType: data.data.tokenType || "Bearer",
+        ...userResponse.data,
+      },
+    };
+  } catch (error) {
+    console.error("[ClientAPI] Microsoft login failed:", error);
+    return {
+      status: false,
+      error: (error as Error).message,
+    };
+  }
+}

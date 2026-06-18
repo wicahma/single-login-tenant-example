@@ -38,14 +38,22 @@ export default function HomePage() {
               <p className="text-gray-600 mb-2">
                 You are successfully logged in via{" "}
                 <span className="font-semibold">
-                  {loginMethod === "oauth" ? "OAuth 2.0" : "Manual Login"}
+                  {loginMethod === "oauth"
+                    ? "OAuth 2.0"
+                    : loginMethod === "manual"
+                      ? "Manual Login"
+                      : loginMethod === "microsoft"
+                        ? "Microsoft Login"
+                        : "Direct Login"}
                 </span>
                 .
               </p>
               <p className="text-sm text-gray-500 mb-4">
                 {loginMethod === "oauth"
                   ? "Your session is managed by the OAuth provider."
-                  : "Your session uses request signing with auto token refresh."}
+                  : loginMethod === "microsoft"
+                    ? "Your session uses Microsoft Entra ID authentication with auto token refresh."
+                    : "Your session uses request signing with auto token refresh."}
               </p>
               <Button onClick={handleGoToDashboard}>Go to Dashboard</Button>
             </Card>
@@ -60,7 +68,7 @@ export default function HomePage() {
                   integration:
                 </p>
 
-                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
                   <div className="border rounded p-4">
                     <h3 className="font-bold mb-2">
                       OAuth 2.0 / OIDC{" "}
@@ -84,6 +92,59 @@ export default function HomePage() {
                     <Link href="/manual/login">
                       <Button variant="secondary" className="w-full">
                         Manual Login
+                      </Button>
+                    </Link>
+                  </div>
+
+                  <div className="border rounded p-4">
+                    <h3 className="font-bold mb-2">
+                      <span className="flex items-center gap-1">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 21 21"
+                          width="16"
+                          height="16"
+                          className="inline-block"
+                        >
+                          <rect
+                            x="1"
+                            y="1"
+                            width="9"
+                            height="9"
+                            fill="#f25022"
+                          />
+                          <rect
+                            x="11"
+                            y="1"
+                            width="9"
+                            height="9"
+                            fill="#7fba00"
+                          />
+                          <rect
+                            x="1"
+                            y="11"
+                            width="9"
+                            height="9"
+                            fill="#00a4ef"
+                          />
+                          <rect
+                            x="11"
+                            y="11"
+                            width="9"
+                            height="9"
+                            fill="#ffb900"
+                          />
+                        </svg>
+                        Microsoft Login
+                      </span>
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Passwordless authentication via Microsoft Entra ID. Uses
+                      MSAL.js to acquire an ID token.
+                    </p>
+                    <Link href="/microsoft/login">
+                      <Button variant="secondary" className="w-full">
+                        Sign in with Microsoft
                       </Button>
                     </Link>
                   </div>

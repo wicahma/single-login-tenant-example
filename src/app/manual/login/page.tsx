@@ -138,6 +138,36 @@ export default function ManualLoginPage() {
 
             <LoginForm onSubmit={handleSubmit} isLoading={isLoading} />
 
+            {/* Divider with "or" */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-2 text-gray-500">or</span>
+              </div>
+            </div>
+
+            {/* Microsoft login button */}
+            <button
+              onClick={() => router.push("/microsoft/login")}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 21 21"
+                width="18"
+                height="18"
+              >
+                <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+              </svg>
+              Sign in with Microsoft
+            </button>
+
             <div className="mt-4 text-center">
               <button
                 onClick={() => router.push("/reset-password")}

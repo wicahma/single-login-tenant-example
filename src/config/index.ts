@@ -48,11 +48,12 @@ export const storageKeys = {
   msSessionAvailable: "ms_session_available",
 };
 
-export type LoginMethod = "oauth" | "manual";
+export type LoginMethod = "oauth" | "manual" | "microsoft";
 
 export const loginMethods = {
   oauth: "oauth" as LoginMethod,
   manual: "manual" as LoginMethod,
+  microsoft: "microsoft" as LoginMethod,
 };
 
 // ─── Microsoft / MSAL config (browser-side) ──────────────────────────────────
