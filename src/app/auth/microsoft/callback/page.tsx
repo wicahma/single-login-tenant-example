@@ -1,84 +1,66 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  PublicClientApplication,
-  type Configuration,
-} from "@azure/msal-browser";
-import { msalConfig as msalConfigValues } from "@/config";
+import { broadcastResponseToMainFrame } from "@azure/msal-browser/redirect-bridge";
 import { LoadingSpinner } from "@/components/atoms";
 
 /**
  * Microsoft Auth Callback Page
  *
- * This page handles the redirect after Microsoft authentication.
- * Both MSAL popup and redirect flows land here with an authorization code
- * in the URL query string (e.g., ?code=...&state=...).
+ * MSAL v5 popup flow:
+ *   1. Parent opens popup → popup navigates to Microsoft login
+ *   2. User signs in → Microsoft redirects popup back HERE (?code=...&state=...)
+ *   3. This page calls broadcastResponseToMainFrame() which:
+ *      a) Parses the auth code + state from the URL
+ *      b) Sends them to the parent window via BroadcastChannel
+ *      c) Closes the popup
+ *   4. Parent's loginPopup() receives the response and resolves
  *
- * MSAL's handleRedirectPromise() captures the code from the URL and
- * completes the authentication flow.
+ * IMPORTANT: DO NOT call handleRedirectPromise() here — that is for the
+ * REDIRECT flow only (user is redirected in the main window). For popup
+ * flow, the response goes through BroadcastChannel.
  *
- * This page MUST be registered as a Single-page Application (SPA) redirect URI
- * in the Azure AD app registration.
- *
- * Popup flow:
- *   MSAL opens a popup window → user signs in → Microsoft redirects the popup
- *   here → MSAL captures the code → popup sends result to parent window via
- *   postMessage → parent window's loginPopup() resolves.
- *
- * Redirect flow:
- *   User is redirected here → MSAL handles the response → user is redirected
- *   to the original page.
+ * This page MUST be registered as a Single-page Application (SPA) redirect
+ * URI in the Azure AD app registration.
  */
 export default function MicrosoftCallbackPage() {
   const [status, setStatus] = useState("Processing authentication...");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleRedirect = async () => {
-      // If MSAL is not configured, just show a message
-      if (!msalConfigValues.clientId || !msalConfigValues.tenantId) {
-        setError("Microsoft authentication is not configured.");
-        return;
-      }
-
+    const run = async () => {
       try {
-        const config: Configuration = {
-          auth: {
-            clientId: msalConfigValues.clientId,
-            authority: `https://login.microsoftonline.com/${msalConfigValues.tenantId}`,
-            redirectUri: msalConfigValues.redirectUri,
-          },
-          cache: {
-            cacheLocation: "sessionStorage",
-          },
-        };
+        await broadcastResponseToMainFrame();
+        // If we reach here, the response was sent to the parent via
+        // BroadcastChannel. The popup can close itself.
+        setStatus("Authentication completed. You may close this window.");
 
-        const msalInstance = new PublicClientApplication(config);
-        await msalInstance.initialize();
-
-        // Handle the redirect promise — this captures the auth code from the URL
-        const response = await msalInstance.handleRedirectPromise();
-
-        if (response) {
-          // Successfully authenticated via redirect flow
-          setStatus("Authentication successful! You can close this window.");
-        } else {
-          // No response means this is either:
-          //   a) The popup flow — MSAL communicates via postMessage internally
-          //   b) A direct navigation to this page without an auth flow
-          setStatus(
-            "No pending authentication request. If you were trying to sign in, " +
-              "please go back and try again.",
-          );
-        }
+        // Auto-close after a brief moment
+        setTimeout(() => {
+          window.close();
+        }, 1500);
       } catch (err) {
-        console.error("[MicrosoftCallback] Error handling redirect:", err);
-        setError((err as Error).message || "Authentication failed");
+        console.error(
+          "[MicrosoftCallback] broadcastResponseToMainFrame failed:",
+          err,
+        );
+        const hasAuthCode = new URLSearchParams(window.location.search).has(
+          "code",
+        );
+        if (hasAuthCode) {
+          // Auth code exists but broadcast failed — likely a direct navigation
+          // or the parent window is no longer listening. Show a message.
+          setStatus(
+            "Authentication received. If this window doesn't close automatically, " +
+              "you may close it manually.",
+          );
+        } else {
+          setError((err as Error).message || "Authentication failed");
+        }
       }
     };
 
-    handleRedirect();
+    run();
   }, []);
 
   return (

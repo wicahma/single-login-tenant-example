@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
       "X-Signature": signature,
       "X-Key-Id": manualAuthConfig.keyId,
       "X-Nonce": nonce,
+      "X-Risk-Level": "VERY_HIGH",
+      "X-Force-Mfa": "true",
     };
 
     console.log("Request Body:", body);
@@ -43,6 +45,16 @@ export async function POST(request: NextRequest) {
     const responseType = request.headers.get("x-response-type");
     if (responseType) {
       headers["x-response-type"] = responseType;
+    }
+
+    const visitorId = request.headers.get("x-visitor-id");
+    if (visitorId) {
+      headers["x-visitor-id"] = visitorId;
+    }
+
+    const isPrivate = request.headers.get("x-is-private");
+    if (isPrivate) {
+      headers["x-is-private"] = isPrivate;
     }
 
     console.log(

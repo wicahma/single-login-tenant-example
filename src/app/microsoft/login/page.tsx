@@ -15,9 +15,34 @@ import { msalConfig as msalConfigValues, loginMethods } from "@/config";
 import { tryParseJSON } from "@/lib/json";
 
 // ---------------------------------------------------------------------------
-// MSAL instance — lazy init
+// MSAL instance — singleton (re-created on error)
 // ---------------------------------------------------------------------------
 let _msalInstance: PublicClientApplication | null = null;
+
+// Clear MSAL cache keys from the previous session to avoid stale state.
+// Only clears keys set by a PREVIOUS session (no "msal." prefix in keys
+// that were created *after* page load), so the in-flight token-request
+// cache entry that loginPopup() creates is preserved.
+function clearStaleMsalCache(): void {
+  if (typeof window === "undefined") return;
+  const requestKey = `msal.${msalConfigValues.clientId}.request`;
+  ["localStorage", "sessionStorage"].forEach((storageType) => {
+    try {
+      const store = window[storageType as "localStorage" | "sessionStorage"];
+      const toRemove: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key && key.startsWith("msal.") && key !== requestKey)
+          toRemove.push(key);
+      }
+      toRemove.forEach((k) => store.removeItem(k));
+    } catch {
+      // storage may be blocked or unavailable
+    }
+  });
+}
+
+clearStaleMsalCache();
 
 function getMsalInstance(): PublicClientApplication {
   if (_msalInstance) return _msalInstance;
@@ -71,7 +96,10 @@ export default function MicrosoftLoginPage() {
     setError(null);
 
     try {
-      // Step 1: Initialize MSAL and acquire ID token via popup
+      // Step 1: Initialize MSAL (singleton) and acquire ID token via popup.
+      // NOTE: We keep the singleton and do NOT call handleRedirectPromise or
+      // clear caches before loginPopup — those can corrupt the auth request.
+      // Recovery from "interaction_in_progress" is handled in the catch block.
       const msalInstance = getMsalInstance();
       await msalInstance.initialize();
 
@@ -126,6 +154,46 @@ export default function MicrosoftLoginPage() {
       if (err.errorCode === "user_cancelled") {
         // User closed the popup — do nothing
         console.log("[MicrosoftLogin] User cancelled the popup");
+        setIsLoading(false);
+        return;
+      }
+
+      if (err.errorCode === "interaction_in_progress") {
+        // User closed the popup previously — MSAL's singleton still thinks an
+        // interaction is in progress. Reset the singleton so the next click
+        // creates a fresh public-client application with clean internal state.
+        console.warn(
+          "[MicrosoftLogin] Stale interaction detected, resetting MSAL instance...",
+        );
+        _msalInstance = null;
+        setIsLoading(false);
+        return;
+      }
+
+      // no_token_request_cache_error: the popup redirected back to the callback
+      // URL but MSAL couldn't find the matching cached token request. This
+      // typically happens when the popup failed (e.g. invalid credentials) and
+      // Microsoft redirected it back with an error — the cached request was
+      // stored in localStorage by the parent, but the callback page may have
+      // looked in the wrong cache, or the cache was cleared.
+      // Reset the MSAL instance so the user can retry on the next click.
+      if (err.errorCode === "no_token_request_cache_error") {
+        console.warn(
+          "[MicrosoftLogin] Cached token request not found (popup likely failed), " +
+            "resetting MSAL instance...",
+        );
+        // Also wipe MSAL interaction state so a fresh start is possible
+        try {
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith("msal.")) keysToRemove.push(k);
+          }
+          keysToRemove.forEach((k) => localStorage.removeItem(k));
+        } catch {
+          // ignore
+        }
+        _msalInstance = null;
         setIsLoading(false);
         return;
       }
@@ -211,13 +279,23 @@ export default function MicrosoftLoginPage() {
             </div>
           </Card>
 
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => router.push("/manual/login")}
-              className="text-blue-600 hover:text-blue-800 text-sm"
-            >
-              Use password login instead
-            </button>
+          <div className="mt-4 text-center space-y-2">
+            <div>
+              <button
+                onClick={() => router.push("/manual/login")}
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Use password login instead
+              </button>
+            </div>
+            <div>
+              <button
+                onClick={() => router.push("/microsoft/manual-test")}
+                className="text-gray-400 hover:text-gray-600 text-xs"
+              >
+                Token manual test (dev only)
+              </button>
+            </div>
           </div>
         </div>
       </main>

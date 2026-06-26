@@ -15,6 +15,7 @@ import {
 } from "@/lib/types/auth";
 import { tryParseJSON } from "@/lib/json";
 import { getMfaNextRoute, saveMfaSession } from "../../../lib/mfa-flow";
+import { checkPrivateMode, getVisitorId } from "@mfa-client/frontend";
 
 export default function ManualLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +41,8 @@ export default function ManualLoginPage() {
       console.log(
         `Submitting login with username: ${username}, password: ${password}, usernameSource: ${usernameSource}, passwordSource: ${passwordSource}, responseType: ${responseType}`,
       );
+      const visitorId = await getVisitorId();
+      const { isPrivate } = await checkPrivateMode();
 
       const response = await loginUser(
         username,
@@ -47,6 +50,8 @@ export default function ManualLoginPage() {
         usernameSource,
         passwordSource,
         responseType,
+        visitorId,
+        isPrivate,
       );
 
       console.log("Login response:", response);

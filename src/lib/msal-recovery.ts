@@ -39,7 +39,7 @@ function getMsalInstance(): PublicClientApplication {
       redirectUri: msalConfigValues.redirectUri,
     },
     cache: {
-      cacheLocation: "sessionStorage",
+      cacheLocation: "localStorage",
     },
   };
 

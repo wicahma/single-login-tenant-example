@@ -224,12 +224,16 @@ export async function loginUser(
   usernameSource: EUsernameSource = "Npk",
   passwordSource: EPasswordSource | null = null,
   responseType: TResponseType = "default",
+  visitorId?: string | null,
+  isPrivate?: boolean | null,
 ): Promise<ApiResponse<any>> {
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "x-username-source": String(usernameSource),
       "x-response-type": responseType,
+      "x-visitor-id": visitorId || "",
+      "x-is-private": isPrivate ? "true" : "false",
     };
 
     if (passwordSource !== null) {
