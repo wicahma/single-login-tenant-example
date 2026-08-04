@@ -1,3 +1,5 @@
+import { TResponseType } from "@/lib/types/auth";
+
 export const ssoConfig = {
   ssoBaseUrl: process.env.SSO_BASE_URL || "http://localhost:4000",
   ssoServerUrl:
@@ -22,6 +24,8 @@ export const manualAuthConfig = {
   defaultUsernameSource: "npk",
   defaultPasswordSource: "",
   usernameSource: process.env.NEXT_PUBLIC_USERNAME_SOURCE || "",
+  responseType: (process.env.NEXT_PUBLIC_RESPONSE_TYPE ||
+    "default") as TResponseType,
 };
 
 export const encryptionConfig = {

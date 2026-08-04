@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
     );
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       "X-App-Identifier": manualAuthConfig.appIdentifier,
       APIKey: manualAuthConfig.apiKey,
       "X-Timestamp": timestamp,
@@ -60,6 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    console.log("Data", data);
     return NextResponse.json(data);
   } catch (error) {
     console.error("Get user details error:", (error as Error).message);

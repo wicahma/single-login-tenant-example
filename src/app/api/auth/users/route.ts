@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
     );
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       "X-App-Identifier": manualAuthConfig.appIdentifier,
       APIKey: manualAuthConfig.apiKey,
       "X-Timestamp": timestamp,

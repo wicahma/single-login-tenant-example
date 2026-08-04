@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
       "X-Signature": signature,
       "X-Key-Id": manualAuthConfig.keyId,
       "X-Nonce": nonce,
-      "X-Risk-Level": "VERY_HIGH",
-      "X-Force-Mfa": "true",
+      // "X-Risk-Level": "VERY_HIGH",
+      // "X-Force-Mfa": "true",
     };
 
     console.log("Request Body:", body);
