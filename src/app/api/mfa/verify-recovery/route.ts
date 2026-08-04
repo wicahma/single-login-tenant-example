@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,15 +40,20 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
       return NextResponse.json(
-        { error: "mfa_verify_recovery_failed", message: errorText },
-        { status: response.status },
+        { error: "mfa_verify_recovery_failed", message: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
+    const data = parsed.data;
     console.log("MFA verify recovery successful:", data);
     return NextResponse.json(data);
   } catch (error) {

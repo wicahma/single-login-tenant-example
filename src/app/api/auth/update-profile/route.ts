@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function PUT(request: NextRequest) {
   try {
@@ -47,15 +48,20 @@ export async function PUT(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
       return NextResponse.json(
-        { error: "update_failed", message: errorText },
-        { status: response.status },
+        { error: "update_failed", message: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
+    const data = parsed.data;
     return NextResponse.json(data);
   } catch (error) {
     console.error("Update profile error:", (error as Error).message);

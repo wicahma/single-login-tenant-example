@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,16 +43,21 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
       return NextResponse.json(
-        { error: "password_reset_failed", message: errorText },
-        { status: response.status },
+        { error: "password_reset_failed", message: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
-    if (!data.status) {
+    const data = parsed.data as Record<string, any> | null;
+    if (data && !data.status) {
       return NextResponse.json(
         {
           error: "password_reset_failed",

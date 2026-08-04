@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,25 +73,34 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(requestBody),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
+      const errorData =
+        parsed.data && typeof parsed.data === "object"
+          ? (parsed.data as Record<string, any>)
+          : {};
       return NextResponse.json(
         {
           error: errorData.error || "change_password_failed",
           message: errorData.message || "Failed to change password",
         },
-        { status: response.status },
+        { status: parsed.status },
       );
     }
 
     console.log("Request Body:", body);
     console.log("Request Headers:", headers);
 
-    const data = await response.json();
+    const data = parsed.data as { message?: string; data?: any } | null;
     return NextResponse.json({
       status: true,
-      message: data.message || "Password changed successfully",
-      data: data.data,
+      message: data?.message || "Password changed successfully",
+      data: data?.data,
     });
   } catch (error) {
     console.error("Change password error:", (error as Error).message);

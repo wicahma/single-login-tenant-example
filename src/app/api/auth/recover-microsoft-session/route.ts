@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 /**
  * POST /api/auth/recover-microsoft-session
@@ -73,18 +74,24 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(requestBody),
     });
 
-    const data = await response.json();
+    const parsed = await parseBackendResponse(response);
 
-    if (!response.ok) {
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    const data = parsed.data as Record<string, any> | null;
+
+    if (!parsed.ok) {
       return NextResponse.json(
         {
           status: false,
           message:
-            data.message ||
-            `Microsoft session recovery failed: ${response.statusText}`,
-          errors: data.errors,
+            data?.message ||
+            `Microsoft session recovery failed: ${parsed.statusText}`,
+          errors: data?.errors,
         },
-        { status: response.status },
+        { status: parsed.status },
       );
     }
 

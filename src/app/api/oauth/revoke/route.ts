@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ssoConfig } from "@/config";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,12 +57,17 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log("Revoke endpoint error:", errorText);
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
+      console.log("Revoke endpoint error:", parsed.text);
       return NextResponse.json(
-        { error: "revoke_error", errorDescription: errorText },
-        { status: response.status },
+        { error: "revoke_error", errorDescription: parsed.text },
+        { status: parsed.status },
       );
     }
 

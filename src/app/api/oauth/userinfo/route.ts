@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ssoConfig } from "@/config";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,16 +36,21 @@ export async function GET(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log("Userinfo endpoint error:", errorText);
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
+      console.log("Userinfo endpoint error:", parsed.text);
       return NextResponse.json(
-        { error: "userinfo_error", errorDescription: errorText },
-        { status: response.status },
+        { error: "userinfo_error", errorDescription: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
+    const data = parsed.data;
     return NextResponse.json(data);
   } catch (error) {
     console.log("Server error in userinfo route:", (error as Error).message);

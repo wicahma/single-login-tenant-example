@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ssoConfig } from "@/config";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,17 +82,22 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
       console.log("ssoConfig ssoServerUrl :", ssoConfig.ssoServerUrl);
-      console.log("Token endpoint error:", errorText);
+      console.log("Token endpoint error:", parsed.text);
       return NextResponse.json(
-        { error: "token_error", errorDescription: errorText },
-        { status: response.status },
+        { error: "token_error", errorDescription: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
+    const data = parsed.data;
     console.log("Token response data:", data);
     return NextResponse.json(data);
   } catch (error) {

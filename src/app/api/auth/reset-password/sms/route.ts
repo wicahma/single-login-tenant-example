@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,15 +37,20 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Reset password SMS failed:", errorText);
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
+      console.error("Reset password SMS failed:", parsed.text);
       return NextResponse.json(
-        { error: "sms_send_failed", message: errorText },
-        { status: response.status },
+        { error: "sms_send_failed", message: parsed.text },
+        { status: parsed.status },
       );
     }
-    const data = await response.text();
+    const data = parsed.text;
     console.log("Reset password SMS response:", data);
     // const data = await response.json();
     return NextResponse.json(data);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,17 +48,23 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const parsed = await parseBackendResponse(response);
 
-    if (!response.ok) {
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    const data = parsed.data as Record<string, any> | null;
+
+    if (!parsed.ok) {
       return NextResponse.json(
         {
           status: false,
           message:
-            data.message ||
-            `Microsoft token refresh failed: ${response.statusText}`,
+            data?.message ||
+            `Microsoft token refresh failed: ${parsed.statusText}`,
         },
-        { status: response.status },
+        { status: parsed.status },
       );
     }
 

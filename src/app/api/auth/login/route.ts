@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,16 +72,21 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log("Login failed with response:", errorText);
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
+      console.log("Login failed with response:", parsed.text);
       return NextResponse.json(
-        { error: "login_failed", message: errorText },
-        { status: response.status },
+        { error: "login_failed", message: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
+    const data = parsed.data;
     console.log("Login successful:", data);
     return NextResponse.json(data);
   } catch (error) {

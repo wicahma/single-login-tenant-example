@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,9 +52,15 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    if (!response.ok) {
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
       // Even if logout fails on server, we'll treat it as success for client
-      console.error("Logout API failed:", response.status);
+      console.error("Logout API failed:", parsed.status);
     }
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,20 +36,22 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify(body),
       },
     );
-    console.log(
-      "OTP validation response data:",
-      JSON.stringify(await response.clone().json()),
-    );
+    const parsed = await parseBackendResponse(response);
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    console.log("OTP validation response data:", JSON.stringify(parsed.data));
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
       return NextResponse.json(
-        { error: "otp_validation_failed", message: errorText },
-        { status: response.status },
+        { error: "otp_validation_failed", message: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
+    const data = parsed.data;
     return NextResponse.json(data);
   } catch (error) {
     console.error("OTP validation error:", (error as Error).message);

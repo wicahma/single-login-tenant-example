@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { manualAuthConfig } from "@/config";
 import { signManualRequest } from "@/lib/crypto";
 import { EUsernameSource } from "@/lib/types/auth";
+import { parseBackendResponse, wafErrorResponse } from "@/lib/backend-response";
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,15 +51,20 @@ export async function GET(request: NextRequest) {
       headers,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const parsed = await parseBackendResponse(response);
+
+    if (parsed.isWaf) {
+      return wafErrorResponse(parsed);
+    }
+
+    if (!parsed.ok) {
       return NextResponse.json(
-        { error: "fetch_failed", message: errorText },
-        { status: response.status },
+        { error: "fetch_failed", message: parsed.text },
+        { status: parsed.status },
       );
     }
 
-    const data = await response.json();
+    const data = parsed.data;
     console.log("Data", data);
     return NextResponse.json(data);
   } catch (error) {
