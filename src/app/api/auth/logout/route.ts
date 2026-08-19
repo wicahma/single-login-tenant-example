@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      "Accept-Language": "id",
       "X-App-Identifier": manualAuthConfig.appIdentifier,
       APIKey: manualAuthConfig.apiKey,
       "X-Timestamp": timestamp,

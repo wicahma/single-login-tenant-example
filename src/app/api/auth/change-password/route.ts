@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       "X-Key-Id": manualAuthConfig.keyId,
       "X-Nonce": nonce,
       Authorization: authorization,
+      "Accept-Language": "id",
     };
 
     // Add optional password type header if provided

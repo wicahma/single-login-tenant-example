@@ -70,6 +70,7 @@ export async function logoutUser(
 export async function refreshAccessToken(
   refreshToken: string,
   workId?: number | null,
+  uamAolId?: number | null,
 ): Promise<ApiResponse<TokenResponse>> {
   try {
     const response = await fetch("/api/auth/refresh", {
@@ -80,6 +81,7 @@ export async function refreshAccessToken(
       body: JSON.stringify({
         refreshToken,
         ...(workId != null ? { workId } : {}),
+        ...(uamAolId != null ? { uamAolId } : {}),
       }),
     });
 
@@ -186,7 +188,7 @@ export async function getUserDetails(
 ): Promise<ApiResponse<UserInfo>> {
   try {
     const usernameSource: EUsernameSource = (manualAuthConfig.usernameSource ||
-      "Npk") as EUsernameSource;
+      "npk") as EUsernameSource;
 
     const response = await fetch("/api/auth/me", {
       method: "GET",

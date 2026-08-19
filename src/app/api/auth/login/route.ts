@@ -26,12 +26,10 @@ export async function POST(request: NextRequest) {
       "X-Signature": signature,
       "X-Key-Id": manualAuthConfig.keyId,
       "X-Nonce": nonce,
+      "Accept-Language": "id",
       // "X-Risk-Level": "VERY_HIGH",
       // "X-Force-Mfa": "true",
     };
-
-    console.log("Request Body:", body);
-    console.log("Request Headers:", headers);
 
     const usernameSource = request.headers.get("x-username-source");
     if (usernameSource) {
@@ -57,6 +55,9 @@ export async function POST(request: NextRequest) {
     if (isPrivate) {
       headers["x-is-private"] = isPrivate;
     }
+
+    console.log("Request Body:", body);
+    console.log("Request Headers:", headers);
 
     console.log(
       "Sending login request to SSO server at:",

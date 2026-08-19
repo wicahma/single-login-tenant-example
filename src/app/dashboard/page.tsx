@@ -61,6 +61,7 @@ export default function DashboardPage() {
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [userWorks, setUserWorks] = useState<UserWorkInfo[]>([]);
   const [selectedWorkId, setSelectedWorkId] = useState<number | null>(null);
+  const [selectedUamIdx, setSelectedUamIdx] = useState<number | null>(null);
   const [workUam, setWorkUam] = useState<UserUamWorkInfo | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingWorks, setIsLoadingWorks] = useState(false);
@@ -141,11 +142,13 @@ export default function DashboardPage() {
   const handleSelectWork = async (
     workId: number | null,
     uamAolId: number | null,
+    i: number,
   ) => {
     const currentRefreshToken = localStorage.getItem(storageKeys.refreshToken);
     if (!currentRefreshToken) return;
 
     setSelectedWorkId(workId ?? uamAolId);
+    setSelectedUamIdx(i);
     setWorkUam(null);
     setUamError(null);
     setIsLoadingUam(true);
@@ -154,6 +157,7 @@ export default function DashboardPage() {
       const refreshResult = await refreshAccessToken(
         currentRefreshToken,
         workId,
+        uamAolId,
       );
       if (!refreshResult.status || !refreshResult.data) {
         setUamError(
@@ -855,16 +859,11 @@ export default function DashboardPage() {
                     Select a work assignment to view UAM details.
                   </p>
                   {userWorks.map((work, idx) => {
-                    const isSelected = selectedWorkId === work.workId;
+                    const isSelected = selectedUamIdx === idx;
                     const isAolOnly = work.workId === null;
                     return (
-                      <button
-                        key={work.workId ?? `aol-${idx}`}
-                        type="button"
-                        onClick={() => {
-                          console.log("Selected work:", work);
-                          handleSelectWork(work.workId, work.uamAolId);
-                        }}
+                      <div
+                        key={`aol-${idx} + ${work.workId}`}
                         className={`w-full text-left rounded-lg border p-4 transition-all ${
                           isSelected
                             ? "border-blue-500 ring-2 ring-blue-300 bg-blue-50"
@@ -872,11 +871,31 @@ export default function DashboardPage() {
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2">
+                          <div className=" flex flex-col gap-1">
+                            <Button
+                              onClick={() => {
+                                console.log("Selected work:", work.workId);
+                                handleSelectWork(work.workId, null, idx);
+                              }}
+                              className="text-nowrap"
+                            >
+                              pilih work
+                            </Button>
+                            <Button
+                              className="text-nowrap"
+                              onClick={() => {
+                                console.log("Selected work:", work.uamAolId);
+                                handleSelectWork(null, work.uamAolId, idx);
+                              }}
+                            >
+                              pilih uam aol
+                            </Button>
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium text-gray-900">
-                                {work.workId} {work.position.id}{" "}
-                                {work.position.name}
+                                {work.workId} {work.uamAolId} -{" "}
+                                {work.position.id} {work.position.name}
                               </span>
                               {isAolOnly && (
                                 <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
@@ -917,7 +936,7 @@ export default function DashboardPage() {
                             </span>
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
